@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { getImageUrl } from '@/lib/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -94,7 +95,7 @@ export default function ProductListPage() {
           rating: 4.8 + Math.random() * 0.2,
           reviews: Math.floor(60 + Math.random() * 140),
           img:
-            (item.image_url ? (item.image_url.startsWith('/') ? `${API.replace('/api', '')}${item.image_url}` : item.image_url) : null) ||
+            getImageUrl(item.image_url) ||
             'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=400&q=80',
           isNew: new Date() - new Date(item.created_at) < 14 * 24 * 60 * 60 * 1000,
         })),

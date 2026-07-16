@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { getImageUrl } from '@/lib/api';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -109,7 +110,7 @@ export default function ProductDetailPage() {
           stock_quantity: data.stock_quantity,
           category_name: data.category_name,
           manufacturer_url: mUrl,
-          images: (data.image_url ? [data.image_url, ...additional] : ['https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80']).map(img => img.startsWith('/') ? `${API.replace('/api', '')}${img}` : img),
+          images: (data.image_url ? [data.image_url, ...additional] : ['https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80']).map(img => getImageUrl(img)),
           specs: Object.entries(parsedSpecs).map(([label, value]) => ({ label, value })),
         });
 

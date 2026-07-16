@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { getImageUrl } from '../lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useNavigate } from 'react-router-dom';
@@ -1086,7 +1087,7 @@ export default function AdminDashboardPage() {
                         <td className="px-12 py-10">
                           <div className="flex items-center space-x-6">
                             <div className="w-14 h-14 rounded-xl bg-stella-black border border-white/5 flex items-center justify-center p-2">
-                              <img src={product.image_url?.startsWith('/') ? `${API.replace('/api', '')}${product.image_url}` : product.image_url} alt={product.name} className="w-full h-full object-contain mix-blend-lighten" />
+                              <img src={getImageUrl(product.image_url)} alt={product.name} className="w-full h-full object-contain mix-blend-lighten" />
                             </div>
                             <span className="text-white font-black uppercase tracking-widest text-xs">{product.name}</span>
                           </div>
@@ -1345,7 +1346,7 @@ export default function AdminDashboardPage() {
                           {productForm.image_url && (
                             <div className="relative shrink-0 w-24 h-24 rounded-xl border-2 border-stella-gold bg-black flex items-center justify-center p-2">
                               <span className="absolute -top-2 -right-2 bg-stella-gold text-black text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Main</span>
-                              <img src={productForm.image_url?.startsWith('/') ? `${API.replace('/api', '')}${productForm.image_url}` : productForm.image_url} alt="Main" className="max-w-full max-h-full object-contain" />
+                              <img src={getImageUrl(productForm.image_url)} alt="Main" className="max-w-full max-h-full object-contain" />
                             </div>
                           )}
                           {(productForm.additional_images || []).map((img, idx) => (

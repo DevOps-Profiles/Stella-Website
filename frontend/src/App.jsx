@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { API_BASE as API, getImageUrl } from './lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import LoginModal from '@/components/LoginModal';
@@ -239,7 +240,7 @@ export default function App() {
                               >
                                 {cat.image_url ? (
                                   <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1 shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">
-                                    <img src={cat.image_url?.startsWith('/') ? `${API.replace('/api', '')}${cat.image_url}` : cat.image_url} alt={cat.name} className="w-full h-full object-contain mix-blend-lighten" />
+                                    <img src={getImageUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-contain mix-blend-lighten" />
                                   </div>
                                 ) : (
                                   <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">

@@ -19,6 +19,11 @@ export function getImageUrl(path) {
     baseUrl = `https://${baseUrl}`;
   }
 
+  // Force /uploads/ paths to go through /api/uploads/ so reverse proxies catch them
+  if (path.startsWith('/uploads/')) {
+    path = '/api' + path;
+  }
+
   if (path.startsWith('/')) {
     return `${baseUrl}${path}`;
   }

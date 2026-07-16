@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getImageUrl } from '../lib/api';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -269,7 +270,7 @@ export default function HomePage() {
               oldPrice: parseFloat(prod.price),
               tag: item.customLabel || prod.deal_label || 'Special Offer',
               subtitle: item.subtitle || prod.description || 'Exclusive Stella Engineering Protocol',
-              img: (prod.image_url ? (prod.image_url.startsWith('/') ? `${API.replace('/api', '')}${prod.image_url}` : prod.image_url) : null) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=400&q=80',
+              img: getImageUrl(prod.image_url) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=400&q=80',
             });
           }
         });
@@ -292,7 +293,7 @@ export default function HomePage() {
               oldPrice: parseFloat(item.price) * 1.2,
               tag: item.deal_label || 'Special Offer',
               subtitle: item.description || 'Exclusive Stella Engineering Protocol',
-              img: (item.image_url ? (item.image_url.startsWith('/') ? `${API.replace('/api', '')}${item.image_url}` : item.image_url) : null) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=400&q=80',
+              img: getImageUrl(item.image_url) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=400&q=80',
             })),
           );
           return;

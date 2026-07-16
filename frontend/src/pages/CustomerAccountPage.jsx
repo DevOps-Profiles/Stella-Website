@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { MapPin, FileText, Package, X } from 'lucide-react';
+import { getImageUrl } from '../lib/api';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -694,7 +695,7 @@ export default function CustomerAccountPage() {
                             {order.items?.map((item) => (
                               <div key={item.id} className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-stella-black border border-white/5 flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
-                                  <img src={item.image_url?.startsWith('/') ? `${API.replace('/api', '')}${item.image_url}` : item.image_url} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-lighten" />
+                                  <img src={getImageUrl(item.image_url)} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-lighten" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-bold text-white truncate">{item.name}</p>
@@ -825,7 +826,7 @@ export default function CustomerAccountPage() {
                                 {order.items?.map((item) => (
                                   <div key={item.id} className="flex items-center gap-4 bg-white/[0.02] p-4 rounded-2xl border border-white/[0.03] hover:border-white/10 transition-colors">
                                     <div className="w-16 h-16 rounded-xl bg-stella-black border border-white/5 flex items-center justify-center p-2 flex-shrink-0">
-                                      <img src={item.image_url?.startsWith('/') ? `${API.replace('/api', '')}${item.image_url}` : item.image_url} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-lighten" />
+                                      <img src={getImageUrl(item.image_url)} alt={item.name} className="max-h-full max-w-full object-contain mix-blend-lighten" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h5 className="text-white font-bold text-xs truncate mb-1">{item.name}</h5>
