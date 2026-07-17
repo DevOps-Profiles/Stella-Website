@@ -459,7 +459,7 @@ export default function HomePage() {
 
   const activeConfig = homepageConfig?.hero?.slides?.length ? homepageConfig : DEFAULT_HOMEPAGE_CONFIG;
   const currentSlideData = activeConfig.hero.slides[currentSlide] ?? activeConfig.hero.slides[0];
-  const titleWords = (currentSlideData?.title || 'Stella Future').split(' ');
+  const titleWords = currentSlideData?.title ? currentSlideData.title.split(' ') : [];
 
   return (
     <div className="space-y-8 md:space-y-12 pb-16">
@@ -474,7 +474,12 @@ export default function HomePage() {
           <TiltCard
             maxTilt={2}
             scale={1.01}
-            className="animate-float-up-card md:col-span-8 relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_30px_80px_rgba(0,0,0,0.5)] group flex flex-col h-full"
+            className={`animate-float-up-card md:col-span-8 relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_30px_80px_rgba(0,0,0,0.5)] group flex flex-col h-full ${currentSlideData?.categoryId ? 'cursor-pointer' : ''}`}
+            onClick={() => {
+              if (currentSlideData?.categoryId) {
+                navigate(`/products?category=${encodeURIComponent(currentSlideData.categoryId)}`);
+              }
+            }}
           >
             <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0d0d12] to-[#050508]" />
             <div className="absolute inset-0 z-0">
@@ -488,23 +493,27 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent opacity-90 z-20 pointer-events-none" />
             </div>
             {/* The Text Layer */}
-            <div className="absolute inset-0 z-30 flex flex-col items-start justify-end p-6 pb-24 md:p-12 md:pb-28 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent">
-              <h1 className="text-[10vw] md:text-[5vw] font-black uppercase tracking-tighter text-white leading-[0.85] text-left drop-shadow-2xl">
-                {titleWords.slice(0, -1).join(' ')}<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
-                  {titleWords[titleWords.length - 1]}
-                </span>
-              </h1>
-            </div>
+            {titleWords.length > 0 && (
+              <div className="absolute inset-0 z-30 flex flex-col items-start justify-end p-6 pb-24 md:p-12 md:pb-28 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent">
+                <h1 className={`font-black uppercase tracking-tighter text-white leading-[0.85] text-left drop-shadow-2xl ${currentSlideData.titleSize || 'text-[10vw] md:text-[5vw]'}`}>
+                  {titleWords.slice(0, -1).join(' ')}<br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
+                    {titleWords[titleWords.length - 1]}
+                  </span>
+                </h1>
+              </div>
+            )}
             {/* Floating Glass Subtitle */}
-            <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-20">
-              <span className="inline-flex items-center gap-3 bg-white/[0.05] backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/10 shadow-2xl">
-                <span className="w-2.5 h-2.5 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
-                <span className="text-white font-black text-[10px] md:text-xs uppercase tracking-[0.25em]">
-                  {currentSlideData?.subtitle || 'Stella Exclusives'}
+            {currentSlideData?.subtitle && (
+              <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-20">
+                <span className="inline-flex items-center gap-3 bg-white/[0.05] backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/10 shadow-2xl">
+                  <span className="w-2.5 h-2.5 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
+                  <span className={`text-white font-black uppercase tracking-[0.25em] ${currentSlideData.subtitleSize || 'text-[10px] md:text-xs'}`}>
+                    {currentSlideData.subtitle}
+                  </span>
                 </span>
-              </span>
-            </div>
+              </div>
+            )}
           </TiltCard>
 
           {/* Action Tile (Right Column, 20%) */}

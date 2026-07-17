@@ -438,7 +438,7 @@ export default function AdminDashboardPage() {
   const [orderPaymentFilter, setOrderPaymentFilter] = useState('All');
 
   const [productForm, setProductForm] = useState({
-    name: '', category_id: 1, price: 0, stock_quantity: 0, description: '', image_url: '', additional_images: [], specs: {},
+    name: '', category_id: 1, price: '', stock_quantity: '', description: '', image_url: '', additional_images: [], specs: {},
   });
 
   const [homepage, setHomepage] = useState(DEFAULT_HOMEPAGE);
@@ -667,7 +667,7 @@ export default function AdminDashboardPage() {
 
   const openAddProduct = () => {
     setEditingProduct(null);
-    setProductForm({ name: '', category_id: '', price: 0, stock_quantity: 0, description: '', image_url: '', additional_images: [], specs: {} });
+    setProductForm({ name: '', category_id: '', price: '', stock_quantity: '', description: '', image_url: '', additional_images: [], specs: {} });
     setProductImages([]);
     setSpecsList([]);
     setCategorySpecs({});
@@ -1163,8 +1163,8 @@ export default function AdminDashboardPage() {
                       <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest">Price (INR)</label>
                       <input
                         type="number"
-                        value={productForm.price || 0}
-                        onChange={(e) => setProductForm({ ...productForm, price: parseFloat(e.target.value) || 0 })}
+                        value={productForm.price}
+                        onChange={(e) => setProductForm({ ...productForm, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                         required
                         className="w-full bg-black border border-white/[0.05] rounded-xl px-5 py-3.5 text-white text-xs font-bold focus:border-stella-red outline-none"
                       />
@@ -1173,8 +1173,8 @@ export default function AdminDashboardPage() {
                       <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest">Stock Quantity</label>
                       <input
                         type="number"
-                        value={productForm.stock_quantity || 0}
-                        onChange={(e) => setProductForm({ ...productForm, stock_quantity: parseInt(e.target.value) || 0 })}
+                        value={productForm.stock_quantity}
+                        onChange={(e) => setProductForm({ ...productForm, stock_quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                         required
                         className="w-full bg-black border border-white/[0.05] rounded-xl px-5 py-3.5 text-white text-xs font-bold focus:border-stella-red outline-none"
                       />
@@ -2244,8 +2244,8 @@ export default function AdminDashboardPage() {
                       Delete
                     </button>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-6 space-y-2">
                         <label className="text-[7px] text-gray-500 font-bold uppercase">Slide Title</label>
                         <input
                           value={slide.title || ''}
@@ -2256,6 +2256,117 @@ export default function AdminDashboardPage() {
                           }}
                           className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
                         />
+                      </div>
+                      <div className="md:col-span-3 space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Title Size Preset</label>
+                        <select
+                          value={
+                            ['', 'text-[6vw] md:text-[3vw]', 'text-[8vw] md:text-[4vw]', 'text-[12vw] md:text-[6vw]', 'text-[14vw] md:text-[7vw]'].includes(slide.titleSize || '') 
+                            ? slide.titleSize || '' 
+                            : 'custom'
+                          }
+                          onChange={(e) => {
+                            if (e.target.value !== 'custom') {
+                              const nextSlides = [...homepage.hero.slides];
+                              nextSlides[sidx] = { ...slide, titleSize: e.target.value };
+                              updateHomepage('hero.slides', nextSlides);
+                            }
+                          }}
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
+                        >
+                          <option value="">Default</option>
+                          <option value="text-[6vw] md:text-[3vw]">Small</option>
+                          <option value="text-[8vw] md:text-[4vw]">Medium</option>
+                          <option value="text-[12vw] md:text-[6vw]">Large</option>
+                          <option value="text-[14vw] md:text-[7vw]">Extra Large</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-3 space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Manual Size</label>
+                        <input
+                          value={slide.titleSize || ''}
+                          onChange={(e) => {
+                            const nextSlides = [...homepage.hero.slides];
+                            nextSlides[sidx] = { ...slide, titleSize: e.target.value };
+                            updateHomepage('hero.slides', nextSlides);
+                          }}
+                          placeholder="e.g. text-[60px]"
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-6 space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Subtitle / Caption</label>
+                        <input
+                          value={slide.subtitle || ''}
+                          onChange={(e) => {
+                            const nextSlides = [...homepage.hero.slides];
+                            nextSlides[sidx] = { ...slide, subtitle: e.target.value };
+                            updateHomepage('hero.slides', nextSlides);
+                          }}
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="md:col-span-3 space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Subtitle Size Preset</label>
+                        <select
+                          value={
+                            ['', 'text-[8px] md:text-[10px]', 'text-[12px] md:text-sm', 'text-sm md:text-base', 'text-base md:text-lg'].includes(slide.subtitleSize || '')
+                            ? slide.subtitleSize || ''
+                            : 'custom'
+                          }
+                          onChange={(e) => {
+                            if (e.target.value !== 'custom') {
+                              const nextSlides = [...homepage.hero.slides];
+                              nextSlides[sidx] = { ...slide, subtitleSize: e.target.value };
+                              updateHomepage('hero.slides', nextSlides);
+                            }
+                          }}
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-medium"
+                        >
+                          <option value="">Default</option>
+                          <option value="text-[8px] md:text-[10px]">Small</option>
+                          <option value="text-[12px] md:text-sm">Medium</option>
+                          <option value="text-sm md:text-base">Large</option>
+                          <option value="text-base md:text-lg">Extra Large</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-3 space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Manual Size</label>
+                        <input
+                          value={slide.subtitleSize || ''}
+                          onChange={(e) => {
+                            const nextSlides = [...homepage.hero.slides];
+                            nextSlides[sidx] = { ...slide, subtitleSize: e.target.value };
+                            updateHomepage('hero.slides', nextSlides);
+                          }}
+                          placeholder="e.g. text-sm"
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Link to Category</label>
+                        <select
+                          value={slide.categoryId || ''}
+                          onChange={(e) => {
+                            const nextSlides = [...homepage.hero.slides];
+                            nextSlides[sidx] = { ...slide, categoryId: e.target.value };
+                            updateHomepage('hero.slides', nextSlides);
+                          }}
+                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
+                        >
+                          <option value="">No Link</option>
+                          {dbCategories.map(cat => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[7px] text-gray-500 font-bold uppercase">Image URL</label>
@@ -2269,19 +2380,6 @@ export default function AdminDashboardPage() {
                           className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2 px-3 text-[10px] font-mono"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[7px] text-gray-500 font-bold uppercase">Subtitle / Caption</label>
-                      <input
-                        value={slide.subtitle || ''}
-                        onChange={(e) => {
-                          const nextSlides = [...homepage.hero.slides];
-                          nextSlides[sidx] = { ...slide, subtitle: e.target.value };
-                          updateHomepage('hero.slides', nextSlides);
-                        }}
-                        className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-medium"
-                      />
                     </div>
                   </div>
                 ))}

@@ -19,8 +19,7 @@ import CleanLogo from '@/components/CleanLogo';
 import OldCleanLogo from '@/components/OldCleanLogo';
 import LegalPage from '@/pages/LegalPage';
 
-const API = import.meta.env.VITE_API_BASE_URL;
-
+// Removed local API declaration because it's imported above
 const defaultNavLinks = [
   { name: 'Home', path: '/' },
   { name: 'Products', path: '/products' },
