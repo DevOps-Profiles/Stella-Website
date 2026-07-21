@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getImageUrl } from '../lib/api';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import { MapPin, Phone, User } from 'lucide-react';
@@ -27,8 +28,14 @@ export default function HubModal({ isOpen, onClose, hub }) {
     : (hub.image ? [hub.image] : ['https://images.unsplash.com/photo-1556656793-08538906a9f8?auto=format&fit=crop&w=800&q=80']);
 
   const getMapsUrl = () => {
-    if (hub.mapUrl) return hub.mapUrl;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hub.address)}`;
+    let query = encodeURIComponent(hub.address);
+    if (hub.mapUrl && !hub.mapUrl.startsWith('http')) {
+      query = encodeURIComponent(hub.mapUrl);
+    }
+    if (hub.mapUrl && hub.mapUrl.startsWith('http') && !hub.mapUrl.includes('embed')) {
+      return hub.mapUrl;
+    }
+    return `https://www.google.com/maps/dir/?api=1&destination=${query}`;
   };
 
   const getWhatsAppUrl = () => {
@@ -76,7 +83,7 @@ export default function HubModal({ isOpen, onClose, hub }) {
                 >
                   {images.map((img, idx) => (
                     <SwiperSlide key={idx} className="w-full h-full bg-black flex items-center justify-center">
-                      <img src={img} alt={`${hub.name} - ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(img)} alt={`${hub.name} - ${idx + 1}`} className="w-full h-full object-cover" />
                     </SwiperSlide>
                   ))}
                 </Swiper>

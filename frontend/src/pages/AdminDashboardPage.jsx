@@ -206,7 +206,7 @@ const ImageUploadInput = ({ value, onChange, placeholder, className }) => {
       const res = await fetch(uploadUrl, { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
-        onChange(serverUrl + data.url);
+        onChange(data.url);
       } else {
         alert('Upload failed: ' + (data.message || 'Unknown error'));
       }
@@ -249,7 +249,7 @@ const FileUploadInput = ({ value, onChange, placeholder, className, accept }) =>
       const res = await fetch(uploadUrl, { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
-        onChange(serverUrl + data.url);
+        onChange(data.url);
       } else {
         alert('Upload failed: ' + (data.message || 'Unknown error'));
       }
@@ -1351,7 +1351,7 @@ export default function AdminDashboardPage() {
                           )}
                           {(productForm.additional_images || []).map((img, idx) => (
                             <div key={idx} className="relative shrink-0 w-24 h-24 rounded-xl border border-white/10 bg-black flex items-center justify-center p-2 group">
-                              <img src={img?.startsWith('/') ? `${API.replace('/api', '')}${img}` : img} alt={`Additional ${idx}`} className="max-w-full max-h-full object-contain" />
+                              <img src={getImageUrl(img)} alt={`Additional ${idx}`} className="max-w-full max-h-full object-contain" />
                             </div>
                           ))}
                         </div>
@@ -1739,7 +1739,7 @@ export default function AdminDashboardPage() {
                         <div className="flex gap-2 overflow-x-auto pt-2 pb-1 admin-custom-scrollbar">
                            {(hub.images || (hub.image ? [hub.image] : [])).map((imgUrl, imgIdx) => (
                              <div key={imgIdx} className="relative w-16 h-16 rounded-xl border border-white/10 shrink-0 group bg-black p-1">
-                               <img src={imgUrl?.startsWith('/') ? `${API.replace('/api', '')}${imgUrl}` : imgUrl} className="w-full h-full object-contain rounded-lg mix-blend-lighten" />
+                               <img src={getImageUrl(imgUrl)} className="w-full h-full object-contain rounded-lg mix-blend-lighten" />
                                <button onClick={() => {
                                   const nextHubs = [...homepage.franchise.hubs];
                                   const currentImages = hub.images || (hub.image ? [hub.image] : []);
@@ -2061,7 +2061,7 @@ export default function AdminDashboardPage() {
                             <div className="flex gap-2 overflow-x-auto pt-2 pb-1 admin-custom-scrollbar">
                                {(hub.images || (hub.image ? [hub.image] : [])).map((imgUrl, imgIdx) => (
                                  <div key={imgIdx} className="relative w-12 h-12 rounded border border-white/10 shrink-0 group bg-black p-0.5">
-                                   <img src={imgUrl?.startsWith('/') ? `${API.replace('/api', '')}${imgUrl}` : imgUrl} className="w-full h-full object-contain rounded mix-blend-lighten" />
+                                   <img src={getImageUrl(imgUrl)} className="w-full h-full object-contain rounded mix-blend-lighten" />
                                    <button onClick={() => {
                                       const nextHubs = [...homepage.our_story.hubs];
                                       const currentImages = hub.images || (hub.image ? [hub.image] : []);

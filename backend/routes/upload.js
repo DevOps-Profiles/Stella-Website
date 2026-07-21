@@ -4,33 +4,29 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../uploads/');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+const db = require('../db/index'); // Make sure to require db
 
-// Configure multer storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'img-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure multer to use memory storage
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // POST upload single image
-router.post('/', upload.single('image'), (req, res) => {
+router.post('/', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
         
-        // Return the URL that can be used to access the image
-        const fileUrl = `/uploads/${req.file.filename}`;
+        const { buffer, mimetype, originalname } = req.file;
+
+        // Insert the file buffer into the uploaded_images table
+        const result = await db.query(
+            'INSERT INTO uploaded_images (data, mime_type, original_name) VALUES (?, ?, ?)',
+            [buffer, mimetype, originalname]
+        );
+
+        // Return the new URL format pointing to our new image serving endpoint
+        const fileUrl = `/api/images/${result.insertId}`;
         res.json({ success: true, url: fileUrl });
     } catch (error) {
         console.error('Upload Error:', error);

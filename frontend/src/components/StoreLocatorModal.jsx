@@ -136,7 +136,7 @@ export default function StoreLocatorModal({ isOpen, onClose, hubs = [] }) {
                       style={{ border: 0 }}
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
-                      src={activeStore.mapUrl || `https://maps.google.com/maps?q=${encodeURIComponent((activeStore.tag?.includes('Own') ? 'Stella Mobiles Sales and Services - ' : '') + activeStore.name + ', ' + activeStore.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                      src={activeStore.mapUrl?.includes('embed') ? activeStore.mapUrl : `https://maps.google.com/maps?q=${activeStore.mapUrl && !activeStore.mapUrl.startsWith('http') ? encodeURIComponent(activeStore.mapUrl) : encodeURIComponent((activeStore.tag?.includes('Own') ? 'Stella Mobiles Sales and Services - ' : '') + activeStore.name + ', ' + activeStore.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                       className="absolute inset-0 w-full h-full"
                     ></iframe>
                   </div>
@@ -167,7 +167,7 @@ export default function StoreLocatorModal({ isOpen, onClose, hubs = [] }) {
                         <PhoneIcon size={20} />
                       </a>
                       <a
-                        href={activeStore.link || `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((activeStore.tag.includes('Own') ? 'Stella Mobiles and Services ' : '') + activeStore.address)}`}
+                        href={activeStore.mapUrl?.startsWith('http') && !activeStore.mapUrl.includes('embed') ? activeStore.mapUrl : `https://www.google.com/maps/dir/?api=1&destination=${activeStore.mapUrl && !activeStore.mapUrl.startsWith('http') ? encodeURIComponent(activeStore.mapUrl) : encodeURIComponent((activeStore.tag?.includes('Own') ? 'Stella Mobiles and Services ' : '') + activeStore.address)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 md:flex-none bg-stella-red hover:bg-red-600 text-white font-bold py-4 px-8 rounded-2xl flex items-center justify-center gap-3 transition-colors shadow-xl shadow-stella-red/20 uppercase tracking-widest"

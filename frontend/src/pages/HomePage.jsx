@@ -153,7 +153,7 @@ function HubCard({ hub, className = '' }) {
 
       {hub.image && (
         <div className="w-full h-32 mb-4 overflow-hidden rounded-xl border border-white/5 relative z-10 shrink-0">
-          <img src={hub.image} alt={hub.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          <img src={getImageUrl(hub.image)} alt={hub.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
         </div>
       )}
 
@@ -487,7 +487,7 @@ export default function HomePage() {
                 <div
                   key={idx}
                   className={`absolute inset-0 w-full h-full bg-cover bg-center mix-blend-screen transition-all duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-60 z-10' : 'opacity-0 z-0'} group-hover:scale-105 animate-hero-pan`}
-                  style={{ backgroundImage: `url('${slide.image || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80'}')` }}
+                  style={{ backgroundImage: `url('${getImageUrl(slide.image) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80'}')` }}
                 />
               ))}
               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent opacity-90 z-20 pointer-events-none" />
@@ -793,7 +793,7 @@ export default function HomePage() {
                 {[...aboutUsCards, ...aboutUsCards].map((card, idx) => (
                   <SwiperSlide key={`${card.id}-${idx}`} className="rounded-3xl border border-white/10 shadow-2xl overflow-hidden bg-stella-black">
                     <img
-                      src={card.image}
+                      src={getImageUrl(card.image)}
                       alt={card.alt || ""}
                       className="h-full w-full object-cover"
                     />
@@ -868,7 +868,7 @@ export default function HomePage() {
                       <div className="absolute inset-0 z-0 bg-black">
                         {displayImage ? (
                           <img
-                            src={displayImage}
+                            src={getImageUrl(displayImage)}
                             alt={hub.name}
                             className="w-full h-full object-cover transition-transform duration-700 opacity-60 group-hover:opacity-100 group-hover:scale-110"
                           />

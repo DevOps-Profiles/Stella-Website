@@ -98,6 +98,14 @@ CREATE TABLE IF NOT EXISTS site_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS uploaded_images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data LONGBLOB NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    original_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO site_config (config_key, config_value) VALUES
 ('homepage_hero', JSON_OBJECT(
     'slides', JSON_ARRAY(

@@ -31,6 +31,7 @@ const categoriesRoutes = require('./routes/categories');
 const addressRoutes = require('./routes/addresses');
 const branchRoutes = require('./routes/branches');
 const uploadRoutes = require('./routes/upload');
+const imagesRoutes = require('./routes/images');
 
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
@@ -41,6 +42,8 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/images', imagesRoutes);
+
 
 // Health check endpoints
 app.get('/', (req, res) => {

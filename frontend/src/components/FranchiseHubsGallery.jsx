@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getImageUrl } from '../lib/api';
 import HubModal from './HubModal';
 
 const HUB_IMAGES = [
@@ -21,7 +22,7 @@ export default function FranchiseHubsGallery({ hubs = [] }) {
       {/* Desktop / Tablet Horizontal Hover Expand Gallery */}
       <div className="hidden sm:flex w-full items-center justify-center gap-2 min-h-[280px]">
         {hubs.map((hub, idx) => {
-          const imgUrl = hub.image || HUB_IMAGES[idx % HUB_IMAGES.length];
+          const imgUrl = getImageUrl(hub.image || HUB_IMAGES[idx % HUB_IMAGES.length]);
           const isActive = activeIdx === idx;
           
           return (
@@ -108,7 +109,7 @@ export default function FranchiseHubsGallery({ hubs = [] }) {
       {/* Mobile Vertical Expand Accordion Gallery */}
       <div className="flex sm:hidden flex-col gap-3 w-full">
         {hubs.map((hub, idx) => {
-          const imgUrl = hub.image || HUB_IMAGES[idx % HUB_IMAGES.length];
+          const imgUrl = getImageUrl(hub.image || HUB_IMAGES[idx % HUB_IMAGES.length]);
           const isActive = activeIdx === idx;
 
           return (
