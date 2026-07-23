@@ -2,10 +2,28 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Ensure sort_order column exists
+async function ensureSortOrderColumn() {
+  try {
+    const cols = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'categories' AND COLUMN_NAME = 'sort_order'
+    `);
+    if (cols.rows.length === 0) {
+      await db.query('ALTER TABLE categories ADD COLUMN sort_order INT DEFAULT 0');
+      console.log('Added sort_order column to categories table');
+    }
+  } catch (err) {
+    console.error('Error ensuring sort_order column:', err);
+  }
+}
+ensureSortOrderColumn();
+
 // GET all categories
 router.get('/', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM categories ORDER BY name ASC');
+        const result = await db.query('SELECT * FROM categories ORDER BY CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 99999 ELSE sort_order END ASC, name ASC');
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching categories:', err);
@@ -15,13 +33,13 @@ router.get('/', async (req, res) => {
 
 // POST new category
 router.post('/', async (req, res) => {
-    const { name, description, filters } = req.body;
+    const { name, description, filters, sort_order } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
     try {
         const filtersJson = filters ? JSON.stringify(filters) : null;
         const result = await db.query(
-            'INSERT INTO categories (name, description, filters) VALUES ($1, $2, $3) RETURNING *',
-            [name, description || '', filtersJson]
+            'INSERT INTO categories (name, description, filters, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, description || '', filtersJson, sort_order || 0]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -33,13 +51,13 @@ router.post('/', async (req, res) => {
 // PUT update category
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, description, filters } = req.body;
+    const { name, description, filters, sort_order } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
     try {
         const filtersJson = filters ? JSON.stringify(filters) : null;
         const result = await db.query(
-            'UPDATE categories SET name = $1, description = $2, filters = $3 WHERE id = $4 RETURNING *',
-            [name, description, filtersJson, id]
+            'UPDATE categories SET name = $1, description = $2, filters = $3, sort_order = $4 WHERE id = $5 RETURNING *',
+            [name, description, filtersJson, sort_order || 0, id]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Category not found' });

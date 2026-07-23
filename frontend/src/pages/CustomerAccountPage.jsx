@@ -147,6 +147,13 @@ export default function CustomerAccountPage() {
     return null; // Prevents flashing the guest UI while redirecting
   }
 
+  const isInvoiceDisabled = (order) => {
+    const isCod = order.payment_method?.toLowerCase() === 'cod';
+    const isStorePickup = order.delivery_type?.toLowerCase() === 'pickup' || order.delivery_type?.toLowerCase() === 'store_pickup';
+    const isAllowedStatus = order.status?.toLowerCase() === 'processing' || order.status?.toLowerCase() === 'delivered';
+    return (isCod || isStorePickup) && !isAllowedStatus;
+  };
+
   const downloadInvoice = (orderId) => {
     window.open(`${API}/orders/${orderId}/invoice`, '_blank');
   };
@@ -746,8 +753,18 @@ export default function CustomerAccountPage() {
                                 </div>
                               )}
                               <div className="pt-4 mt-2">
-                                <button type="button" onClick={() => downloadInvoice(order.id)} className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] py-3 rounded-xl transition-all border border-white/5">
-                                  <span className="text-sm"><FileText size={16} /></span> Download Invoice
+                                <button
+                                  type="button"
+                                  onClick={() => downloadInvoice(order.id)}
+                                  disabled={isInvoiceDisabled(order)}
+                                  className={`w-full flex items-center justify-center gap-2 text-white text-[10px] font-black uppercase tracking-[0.2em] py-3 rounded-xl transition-all border ${
+                                    isInvoiceDisabled(order)
+                                      ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed text-gray-500'
+                                      : 'bg-white/5 hover:bg-white/10 border-white/5'
+                                  }`}
+                                >
+                                  <span className="text-sm"><FileText size={16} /></span>
+                                  {isInvoiceDisabled(order) ? 'Invoice Available After Processing' : 'Download Invoice'}
                                 </button>
                               </div>
                             </div>
@@ -868,8 +885,18 @@ export default function CustomerAccountPage() {
                                 </div>
                               </div>
                               <div className="col-span-1 md:col-span-2 mt-2">
-                                <button type="button" onClick={() => downloadInvoice(order.id)} className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all border border-white/5">
-                                  <span className="text-sm"><FileText size={16} /></span> Download Invoice
+                                <button
+                                  type="button"
+                                  onClick={() => downloadInvoice(order.id)}
+                                  disabled={isInvoiceDisabled(order)}
+                                  className={`w-full flex items-center justify-center gap-2 text-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition-all border ${
+                                    isInvoiceDisabled(order)
+                                      ? 'bg-white/5 border-white/5 opacity-40 cursor-not-allowed text-gray-500'
+                                      : 'bg-white/5 hover:bg-white/10 border-white/5'
+                                  }`}
+                                >
+                                  <span className="text-sm"><FileText size={16} /></span>
+                                  {isInvoiceDisabled(order) ? 'Invoice Available After Processing' : 'Download Invoice'}
                                 </button>
                               </div>
                             </div>

@@ -36,6 +36,13 @@ const DEFAULT_HOMEPAGE_CONFIG = {
   hero: {
     slides: [
       {
+        id: 'franchise-banner',
+        title: '',
+        subtitle: '',
+        image: '/images/hero/stella_franchise_banner.jpg',
+        isFranchise: true
+      },
+      {
         id: 1,
         title: 'Unleash the Future',
         subtitle: 'Experience the next generation of mobile performance and design.',
@@ -207,6 +214,30 @@ export default function HomePage() {
 
   const hubs = homepageConfig?.franchise?.hubs || defaultHubs;
 
+  const resetSlideTimer = useCallback(() => {
+    if (slideIntervalRef.current) {
+      clearInterval(slideIntervalRef.current);
+    }
+    const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
+    if (slidesCount > 1) {
+      slideIntervalRef.current = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % slidesCount);
+      }, 6000);
+    }
+  }, [homepageConfig]);
+
+  const handlePrevSlide = () => {
+    const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
+    setCurrentSlide((prev) => (prev - 1 + slidesCount) % slidesCount);
+    resetSlideTimer();
+  };
+
+  const handleNextSlide = () => {
+    const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
+    setCurrentSlide((prev) => (prev + 1) % slidesCount);
+    resetSlideTimer();
+  };
+
   const col1Reviews = useMemo(
     () => homepageConfig?.testimonials?.col1 || defaultCol1Reviews,
     [homepageConfig],
@@ -229,10 +260,36 @@ export default function HomePage() {
       const response = await fetch(`${API}/site-config/homepage`);
       if (response.ok) {
         let data = parseMaybeJson(await response.json());
-        if (!data?.hero?.slides?.length) {
-          data = DEFAULT_HOMEPAGE_CONFIG;
+        if (!data?.hero) {
+          data = { ...DEFAULT_HOMEPAGE_CONFIG };
         }
+        const dbSlides = data.hero?.slides || [];
+        const cleanDbSlides = dbSlides.filter(s => s.id !== 'franchise-banner');
+        data.hero = {
+          ...data.hero,
+          slides: [
+            {
+              id: 'franchise-banner',
+              title: '',
+              subtitle: '',
+              image: '/images/hero/stella_franchise_banner.jpg',
+              isFranchise: true
+            },
+            ...cleanDbSlides
+          ]
+        };
         console.log('Homepage Config Loaded:', data);
+        
+        // Preload custom banner images in JavaScript cache for instant loading
+        if (data?.hero?.slides) {
+          data.hero.slides.forEach(slide => {
+            if (slide.image) {
+              const img = new Image();
+              img.src = getImageUrl(slide.image);
+            }
+          });
+        }
+        
         homepageConfigRef.current = data;
         setHomepageConfig(data);
 
@@ -243,6 +300,8 @@ export default function HomePage() {
         }
       } else {
         console.error('Failed to load homepage config:', response.status);
+        homepageConfigRef.current = DEFAULT_HOMEPAGE_CONFIG;
+        setHomepageConfig(DEFAULT_HOMEPAGE_CONFIG);
       }
     } catch (err) {
       console.error('Error fetching site config:', err);
@@ -392,15 +451,15 @@ export default function HomePage() {
   const visionTitle = homepageConfig?.our_story?.vision_title || 'The Stella Vision';
   const visionTitleParts = visionTitle.split(' ');
 
-  const franchiseStats = homepageConfig?.franchise?.stats || [
-    { label: 'Own Outlets', value: '5' },
-    { label: 'Franchise Outlets', value: '3' },
+  const activeHubs = homepageConfig?.franchise?.hubs || defaultHubs;
+  const dynamicFranchiseCount = activeHubs.filter(h => h.tag && h.tag.toLowerCase().includes('franchise')).length;
+
+  const franchiseStats = [
+    { label: 'Outlets', value: `${dynamicFranchiseCount}` },
+    { label: 'Growth', value: '100%' }
   ];
 
-  const modalFranchiseStats = homepageConfig?.franchise?.stats || [
-    { label: 'Outlets', value: '50+' },
-    { label: 'Growth YOY', value: '200%' },
-  ];
+  const modalFranchiseStats = franchiseStats;
 
   const ourStoryStats = homepageConfig?.our_story?.stats || [
     { value: '15k+', label: 'Happy Customers' },
@@ -457,8 +516,8 @@ export default function HomePage() {
     return () => cancelAnimationFrame(rafId);
   }, [currentSlide]);
 
-  const activeConfig = homepageConfig?.hero?.slides?.length ? homepageConfig : DEFAULT_HOMEPAGE_CONFIG;
-  const currentSlideData = activeConfig.hero.slides[currentSlide] ?? activeConfig.hero.slides[0];
+  const activeConfig = homepageConfig; // do not fallback to default config while fetching
+  const currentSlideData = activeConfig?.hero?.slides?.[currentSlide] ?? activeConfig?.hero?.slides?.[0];
   const titleWords = currentSlideData?.title ? currentSlideData.title.split(' ') : [];
 
   return (
@@ -466,36 +525,41 @@ export default function HomePage() {
       {/* ── Polished Bento Grid Hero ── */}
       <section
         ref={heroRef}
-        className="relative w-full h-[calc(100svh-4rem)] md:h-[100svh] pt-12 md:pt-16 pb-8 md:pb-16 px-4 md:px-8 flex items-center justify-center bg-[#050508] overflow-hidden"
+        className="relative w-full pt-16 md:pt-24 pb-8 md:pb-16 px-4 md:px-8 flex items-center justify-center bg-[#050508] overflow-hidden"
       >
-        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 grid-rows-[1fr_auto] md:grid-cols-10 md:grid-rows-1 gap-4 md:gap-6 h-[80svh] md:h-[70vh] min-h-[550px] md:min-h-[500px]">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 grid-rows-[1fr_auto] md:grid-cols-10 md:grid-rows-1 gap-4 md:gap-6 items-stretch">
 
           {/* Main Anchor: Image Mask Tile (Center, 80%) */}
           <TiltCard
             maxTilt={2}
             scale={1.01}
-            className={`animate-float-up-card md:col-span-8 relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_30px_80px_rgba(0,0,0,0.5)] group flex flex-col h-full ${currentSlideData?.categoryId ? 'cursor-pointer' : ''}`}
+            className={`animate-float-up-card md:col-span-8 relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_15px_40px_rgba(0,0,0,0.25)] group flex flex-col w-full aspect-[4/3] md:aspect-[16/8] ${(currentSlideData?.categoryId || currentSlideData?.isFranchise) ? 'cursor-pointer' : ''}`}
             onClick={() => {
-              if (currentSlideData?.categoryId) {
+              if (currentSlideData?.isFranchise) {
+                setShowFranchiseModal(true);
+              } else if (currentSlideData?.categoryId) {
                 navigate(`/products?category=${encodeURIComponent(currentSlideData.categoryId)}`);
               }
             }}
           >
             <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0d0d12] to-[#050508]" />
             <div className="absolute inset-0 z-0">
-              {(activeConfig.hero.slides || [currentSlideData]).map((slide, idx) => (
-                <div
+              {activeConfig && (activeConfig.hero.slides || []).map((slide, idx) => (
+                <img
                   key={idx}
-                  className={`absolute inset-0 w-full h-full bg-cover bg-center mix-blend-screen transition-all duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-60 z-10' : 'opacity-0 z-0'} group-hover:scale-105 animate-hero-pan`}
-                  style={{ backgroundImage: `url('${getImageUrl(slide.image) || 'https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80'}')` }}
+                  src={getImageUrl(slide.image)}
+                  alt={slide.title}
+                  loading="eager"
+                  fetchpriority={idx === 0 ? "high" : "auto"}
+                  className={`absolute inset-0 w-full h-full object-cover mix-blend-screen transition-all duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-60 z-10' : 'opacity-0 z-0'} group-hover:scale-105 animate-hero-pan`}
                 />
               ))}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent opacity-90 z-20 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent opacity-70 z-20 pointer-events-none" />
             </div>
             {/* The Text Layer */}
-            {titleWords.length > 0 && (
+            {titleWords.length > 0 && !currentSlideData?.isFranchise && (
               <div className="absolute inset-0 z-30 flex flex-col items-start justify-end p-6 pb-24 md:p-12 md:pb-28 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent">
-                <h1 className={`font-black uppercase tracking-tighter text-white leading-[0.85] text-left drop-shadow-2xl ${currentSlideData.titleSize || 'text-[10vw] md:text-[5vw]'}`}>
+                <h1 className={`font-black uppercase tracking-tighter text-white leading-[0.85] text-left drop-shadow-2xl ${currentSlideData?.titleSize || 'text-[10vw] md:text-[5vw]'}`}>
                   {titleWords.slice(0, -1).join(' ')}<br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
                     {titleWords[titleWords.length - 1]}
@@ -504,15 +568,42 @@ export default function HomePage() {
               </div>
             )}
             {/* Floating Glass Subtitle */}
-            {currentSlideData?.subtitle && (
+            {currentSlideData?.subtitle && !currentSlideData?.isFranchise && (
               <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-20">
                 <span className="inline-flex items-center gap-3 bg-white/[0.05] backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/10 shadow-2xl">
                   <span className="w-2.5 h-2.5 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
-                  <span className={`text-white font-black uppercase tracking-[0.25em] ${currentSlideData.subtitleSize || 'text-[10px] md:text-xs'}`}>
+                  <span className={`text-white font-black uppercase tracking-[0.25em] ${currentSlideData?.subtitleSize || 'text-[10px] md:text-xs'}`}>
                     {currentSlideData.subtitle}
                   </span>
                 </span>
               </div>
+            )}
+            {/* Left & Right Switch Buttons */}
+            {activeConfig?.hero?.slides?.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevSlide();
+                  }}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-stella-red hover:border-stella-red hover:scale-105 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 opacity-0 group-hover:opacity-100"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextSlide();
+                  }}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-stella-red hover:border-stella-red hover:scale-105 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 opacity-0 group-hover:opacity-100"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+              </>
             )}
           </TiltCard>
 
@@ -870,7 +961,7 @@ export default function HomePage() {
                           <img
                             src={getImageUrl(displayImage)}
                             alt={hub.name}
-                            className="w-full h-full object-cover transition-transform duration-700 opacity-60 group-hover:opacity-100 group-hover:scale-110"
+                            className="w-full h-full object-contain transition-transform duration-700 opacity-60 group-hover:opacity-100 group-hover:scale-110"
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-[#111116] to-[#0a0a0c] flex items-center justify-center">

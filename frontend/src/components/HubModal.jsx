@@ -83,7 +83,7 @@ export default function HubModal({ isOpen, onClose, hub }) {
                 >
                   {images.map((img, idx) => (
                     <SwiperSlide key={idx} className="w-full h-full bg-black flex items-center justify-center">
-                      <img src={getImageUrl(img)} alt={`${hub.name} - ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(img)} alt={`${hub.name} - ${idx + 1}`} className="w-full h-full object-contain" />
                     </SwiperSlide>
                   ))}
                 </Swiper>

@@ -59,6 +59,84 @@ export default function ProductDetailPage() {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewHovered, setReviewHovered] = useState(false);
   const [cartPulse, setCartPulse] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSpecs, setSelectedSpecs] = useState('');
+
+  const getSpecString = useCallback((ram, storage) => {
+    const r = ram ? (String(ram).toLowerCase().includes('gb') ? ram : `${ram}GB`) : '';
+    const s = storage ? (String(storage).toLowerCase().includes('gb') ? storage : `${storage}GB`) : '';
+    return [r, s].filter(Boolean).join(' + ');
+  }, []);
+
+  useEffect(() => {
+    if (product && product.variants && product.variants.length > 0) {
+      const initial = product.variants[0];
+      setSelectedColor((initial.color || '').trim());
+      setSelectedSpecs(getSpecString(initial.ram, initial.storage));
+    }
+  }, [product, getSpecString]);
+
+  const colors = useMemo(() => {
+    if (!product || !product.variants) return [];
+    const unique = [];
+    const seen = new Set();
+    product.variants.forEach(v => {
+      if (v.color) {
+        const normalized = v.color.trim();
+        const lower = normalized.toLowerCase();
+        if (!seen.has(lower)) {
+          seen.add(lower);
+          unique.push(normalized);
+        }
+      }
+    });
+    return unique;
+  }, [product]);
+
+  const specs = useMemo(() => {
+    if (!product || !product.variants) return [];
+    // Only display specs that are available for the currently selected color
+    const filtered = product.variants.filter(v => 
+      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
+    );
+    const targetVariants = filtered.length > 0 ? filtered : product.variants;
+    return [...new Set(targetVariants.map(v => getSpecString(v.ram, v.storage)).filter(Boolean))];
+  }, [product, selectedColor, getSpecString]);
+
+  const selectedVariantIdx = useMemo(() => {
+    if (!product || !product.variants || product.variants.length === 0) return null;
+    const idx = product.variants.findIndex(v => 
+      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
+      getSpecString(v.ram, v.storage) === selectedSpecs
+    );
+    return idx !== -1 ? idx : 0;
+  }, [product, selectedColor, selectedSpecs, getSpecString]);
+
+  const handleColorSelect = (col) => {
+    setSelectedColor(col.trim());
+    const matchingVariant = product.variants.find(v => 
+      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase() && 
+      getSpecString(v.ram, v.storage) === selectedSpecs
+    ) || product.variants.find(v => 
+      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase()
+    );
+    if (matchingVariant) {
+      setSelectedSpecs(getSpecString(matchingVariant.ram, matchingVariant.storage));
+    }
+  };
+
+  const handleSpecsSelect = (sp) => {
+    setSelectedSpecs(sp);
+    const matchingVariant = product.variants.find(v => 
+      getSpecString(v.ram, v.storage) === sp && 
+      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
+    ) || product.variants.find(v => 
+      getSpecString(v.ram, v.storage) === sp
+    );
+    if (matchingVariant) {
+      setSelectedColor((matchingVariant.color || '').trim());
+    }
+  };
 
   const reviewScrollEl = useRef(null);
   const reviewScrollPos = useRef(0);
@@ -102,6 +180,28 @@ export default function ProductDetailPage() {
           delete parsedSpecs.manufacturer_url;
         }
 
+        let parsedVariants = [];
+        if (data.variants) {
+          try {
+            parsedVariants = typeof data.variants === 'string' ? JSON.parse(data.variants) : data.variants;
+          } catch(e) {
+            parsedVariants = [];
+          }
+        }
+        
+        let parsedReviews = [];
+        if (data.reviews) {
+          try {
+            parsedReviews = typeof data.reviews === 'string' ? JSON.parse(data.reviews) : data.reviews;
+          } catch(e) {
+            parsedReviews = [];
+          }
+        }
+        if (!Array.isArray(parsedReviews) || parsedReviews.length === 0) {
+          parsedReviews = defaultReviews;
+        }
+        setReviews(parsedReviews);
+
         setProduct({
           id: data.id,
           name: data.name,
@@ -112,6 +212,7 @@ export default function ProductDetailPage() {
           manufacturer_url: mUrl,
           images: (data.image_url ? [data.image_url, ...additional] : ['https://images.unsplash.com/photo-1592899677974-c12d0d014bc0?auto=format&fit=crop&w=800&q=80']).map(img => getImageUrl(img)),
           specs: Object.entries(parsedSpecs).map(([label, value]) => ({ label, value })),
+          variants: parsedVariants,
         });
 
 
@@ -141,34 +242,117 @@ export default function ProductDetailPage() {
     return () => { if (animFrameId.current) cancelAnimationFrame(animFrameId.current); };
   }, [showMore, reviewHovered]);
 
+  const displayPrice = useMemo(() => {
+    if (product && product.variants && product.variants.length > 0 && selectedVariantIdx !== null && product.variants[selectedVariantIdx]) {
+      return product.variants[selectedVariantIdx].price;
+    }
+    return product ? product.price : 0;
+  }, [product, selectedVariantIdx]);
+
+  const isOutOfStock = useMemo(() => {
+    if (!product) return true;
+    if (product.variants && product.variants.length > 0 && selectedVariantIdx !== null) {
+      const variant = product.variants[selectedVariantIdx];
+      if (variant) {
+        const vStock = variant.stock_quantity !== undefined ? parseInt(variant.stock_quantity, 10) : 0;
+        return vStock <= 0;
+      }
+    }
+    return product.stock_quantity <= 0;
+  }, [product, selectedVariantIdx]);
+
+  const isColorOutOfStock = (col) => {
+    if (!product || !product.variants) return false;
+    const variantsForColor = product.variants.filter(v => 
+      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase()
+    );
+    if (variantsForColor.length === 0) return true;
+    return variantsForColor.every(v => {
+      const vStock = v.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+      return vStock <= 0;
+    });
+  };
+
+  const isSpecOutOfStock = (sp) => {
+    if (!product || !product.variants) return false;
+    const variant = product.variants.find(v => 
+      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
+      getSpecString(v.ram, v.storage) === sp
+    );
+    if (!variant) return true;
+    const vStock = variant.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+    return vStock <= 0;
+  };
+
   const addToCart = () => {
     if (!user) { toggleLoginModal(true); return; }
+    if (isOutOfStock) { addToast('This item is currently out of stock.', 'error'); return; }
     if (product) {
       setCartPulse(true);
       setTimeout(() => setCartPulse(false), 600);
+      
+      const hasVariants = product.variants && product.variants.length > 0;
+      const currentVariant = hasVariants ? product.variants[selectedVariantIdx] : null;
+      
+      const cartItemPrice = currentVariant ? currentVariant.price : product.price;
+      const variantDetails = currentVariant 
+        ? [currentVariant.color, currentVariant.ram, currentVariant.storage].filter(Boolean).join(' / ') 
+        : '';
+        
+      const cartItemId = currentVariant 
+        ? `${product.id}-${currentVariant.color || ''}-${currentVariant.ram || ''}-${currentVariant.storage || ''}`.replace(/\s+/g, '')
+        : String(product.id);
+
       for (let i = 0; i < quantity; i++) {
-        addToCartStore({ ...product, img: product.images[0] });
+        addToCartStore({
+          id: product.id,
+          cartItemId: cartItemId,
+          name: product.name,
+          price: cartItemPrice,
+          variantLabel: variantDetails,
+          img: product.images[0]
+        });
       }
-      addToast(`${product.name} added to cart!`, 'success');
+      addToast(`${product.name}${variantDetails ? ` (${variantDetails})` : ''} added to cart!`, 'success');
     }
   };
 
   const buyNow = () => {
     if (!user) { toggleLoginModal(true); return; }
+    if (isOutOfStock) { addToast('This item is currently out of stock.', 'error'); return; }
     addToCart();
     navigate('/checkout');
   };
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (!newReview.title.trim() || !newReview.content.trim()) return;
     setReviewSubmitting(true);
-    setTimeout(() => {
-      setReviews((prev) => [{ id: Date.now(), name: user?.name || 'Anonymous', ...newReview }, ...prev]);
+    try {
+      const newReviewObj = {
+        id: Date.now(),
+        name: user?.name || 'Anonymous',
+        title: newReview.title,
+        content: newReview.content,
+        stars: newReview.stars
+      };
+      const updatedReviews = [newReviewObj, ...reviews];
+      const response = await fetch(`${API}/products/${productId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviews: updatedReviews })
+      });
+      if (!response.ok) throw new Error('Failed to submit review');
+      
+      setReviews(updatedReviews);
       setNewReview({ title: '', content: '', stars: 5 });
-      setReviewSubmitting(false);
       setReviewSubmitted(true);
       setTimeout(() => setReviewSubmitted(false), 3000);
-    }, 600);
+      addToast('Review submitted successfully', 'success');
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -215,9 +399,9 @@ export default function ProductDetailPage() {
             <img src={product.images[activeImage]} alt={product.name} className="max-h-[90%] max-w-[90%] object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.7)] transition-all duration-500 relative z-10 hero-img-float" />
           </div>
           {product.images.length > 1 && (
-            <div className="flex gap-3">
+            <div className="flex gap-3 justify-center">
               {product.images.map((img, idx) => (
-                <div key={idx} onClick={() => setActiveImage(idx)} className={`flex-1 bg-[#0e0e11] border rounded-xl h-20 flex items-center justify-center cursor-pointer transition-all p-2 ${activeImage === idx ? 'border-stella-red shadow-lg shadow-stella-red/20' : 'border-white/[0.05] hover:border-white/20'}`}>
+                <div key={idx} onClick={() => setActiveImage(idx)} className={`w-20 h-20 bg-[#0e0e11] border rounded-xl flex items-center justify-center cursor-pointer transition-all p-2 ${activeImage === idx ? 'border-stella-red shadow-lg shadow-stella-red/20' : 'border-white/[0.05] hover:border-white/20'}`}>
                   <img src={img} alt={`thumb-${idx}`} className="max-h-full object-contain" />
                 </div>
               ))}
@@ -229,8 +413,73 @@ export default function ProductDetailPage() {
           <KineticTitle tag="h1" className="text-3xl lg:text-4xl font-black uppercase tracking-tighter text-white leading-tight">
             {product.name}
           </KineticTitle>
-          <p data-reveal-child className="text-2xl font-black text-white">₹{Number(product.price).toLocaleString('en-IN')}</p>
+          <p data-reveal-child className="text-2xl font-black text-white">₹{Number(displayPrice).toLocaleString('en-IN')}</p>
           <p data-reveal-child className="text-gray-300 font-medium leading-relaxed text-base border-b border-white/[0.05] pb-5">{product.description}</p>
+          
+          {product.variants && product.variants.length > 0 && (
+            <div data-reveal-child className="space-y-4 py-4 border-y border-white/[0.05]">
+              {/* Color Selection */}
+              {colors.length > 0 && (
+                <div className="space-y-2">
+                  <span className="block text-[9px] font-black text-gray-500 uppercase tracking-widest">Select Colour</span>
+                  <div className="flex flex-wrap gap-2">
+                    {colors.map((col) => {
+                      const isSelected = selectedColor === col;
+                      const isColDisabled = isColorOutOfStock(col);
+                      return (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => handleColorSelect(col)}
+                          disabled={isColDisabled}
+                          className={`px-3.5 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                            isColDisabled
+                              ? 'border-white/5 bg-white/[0.01] text-gray-600 line-through cursor-not-allowed opacity-30'
+                              : isSelected
+                              ? 'border-stella-red bg-stella-red/10 text-white shadow-lg shadow-stella-red/10 cursor-pointer'
+                              : 'border-white/5 bg-white/[0.02] text-gray-400 hover:border-white/10 hover:bg-white/[0.04] cursor-pointer'
+                          }`}
+                        >
+                          {col}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Specs Selection */}
+              {specs.length > 0 && (
+                <div className="space-y-2">
+                  <span className="block text-[9px] font-black text-gray-500 uppercase tracking-widest">Select RAM / Storage</span>
+                  <div className="flex flex-wrap gap-2">
+                    {specs.map((sp) => {
+                      const isSelected = selectedSpecs === sp;
+                      const isSpDisabled = isSpecOutOfStock(sp);
+                      return (
+                        <button
+                          key={sp}
+                          type="button"
+                          onClick={() => handleSpecsSelect(sp)}
+                          disabled={isSpDisabled}
+                          className={`px-3.5 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                            isSpDisabled
+                              ? 'border-white/5 bg-white/[0.01] text-gray-600 line-through cursor-not-allowed opacity-30'
+                              : isSelected
+                              ? 'border-stella-red bg-stella-red/10 text-white shadow-lg shadow-stella-red/10 cursor-pointer'
+                              : 'border-white/5 bg-white/[0.02] text-gray-400 hover:border-white/10 hover:bg-white/[0.04] cursor-pointer'
+                          }`}
+                        >
+                          {sp}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div data-reveal-child className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center bg-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden shrink-0">
@@ -238,12 +487,12 @@ export default function ProductDetailPage() {
                 <span className="w-8 text-center text-white font-black text-sm">{quantity}</span>
                 <button onClick={() => setQuantity((q) => Math.min(10, q + 1))} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors font-bold text-base">+</button>
               </div>
-              <button onClick={addToCart} disabled={product.stock_quantity <= 0} title="Add to Cart" className={`h-9 w-12 flex items-center justify-center rounded-xl transition-all relative ${product.stock_quantity <= 0 ? 'bg-white/10 cursor-not-allowed opacity-50' : 'bg-stella-red text-white hover:bg-red-700 shadow-lg shadow-stella-red/20 active:scale-[0.98]'} ${cartPulse ? 'pulse-ring-active' : ''}`}>
+              <button onClick={addToCart} disabled={isOutOfStock} title="Add to Cart" className={`h-9 w-12 flex items-center justify-center rounded-xl transition-all relative ${isOutOfStock ? 'bg-white/10 cursor-not-allowed opacity-50 text-gray-500' : 'bg-stella-red text-white hover:bg-red-700 shadow-lg shadow-stella-red/20 active:scale-[0.98]'} ${cartPulse ? 'pulse-ring-active' : ''}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               </button>
-              <button onClick={buyNow} disabled={product.stock_quantity <= 0} className={`flex-1 bg-white/[0.04] border border-white/[0.08] text-white py-2.5 px-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-2 ${product.stock_quantity <= 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-white hover:text-black active:scale-[0.98]'}`}>
+              <button onClick={buyNow} disabled={isOutOfStock} className={`flex-1 bg-white/[0.04] border border-white/[0.08] text-white py-2.5 px-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-2 ${isOutOfStock ? 'cursor-not-allowed opacity-50 text-gray-500' : 'hover:bg-white hover:text-black active:scale-[0.98]'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span>{product.stock_quantity <= 0 ? 'Unavailable' : 'Buy Now'}</span>
+                <span>{isOutOfStock ? 'Out of Stock' : 'Buy Now'}</span>
               </button>
             </div>
           </div>

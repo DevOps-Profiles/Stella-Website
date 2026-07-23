@@ -23,8 +23,10 @@ export default function CheckoutPage() {
   const [branches, setBranches] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [selectedBranchId, setSelectedBranchId] = useState(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('11:00 AM');
   const [isAddressDropdownOpen, setIsAddressDropdownOpen] = useState(false);
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+  const [isTimeSlotDropdownOpen, setIsTimeSlotDropdownOpen] = useState(false);
   const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [showAddAddressForm, setShowAddAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({
@@ -101,13 +103,19 @@ export default function CheckoutPage() {
       setIsSubmitting(true);
       const orderData = {
         user_id: userId,
-        items: cartItems.map((item) => ({ product_id: item.id, quantity: item.quantity, price: item.price })),
+        items: cartItems.map((item) => ({ 
+          product_id: item.id, 
+          quantity: item.quantity, 
+          price: item.price,
+          variant_label: item.variantLabel || ''
+        })),
         total_amount: total,
         delivery_type: shippingMethod,
         address_id: shippingMethod === 'delivery' ? selectedAddressId : null,
         branch_id: shippingMethod === 'pickup' ? selectedBranchId : null,
         payment_method: paymentMethod,
         razorpay_payment_id: razorpayPaymentId,
+        time_slot: shippingMethod === 'pickup' ? selectedTimeSlot : null,
       };
       const response = await fetch(`${API}/orders`, {
         method: 'POST',
@@ -306,7 +314,10 @@ export default function CheckoutPage() {
                 {branches.length > 0 ? (
                   <div className="relative z-50">
                     <div
-                      onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                      onClick={() => {
+                        setIsBranchDropdownOpen(!isBranchDropdownOpen);
+                        setIsTimeSlotDropdownOpen(false);
+                      }}
                       className={`w-full bg-stella-black border border-white/10 text-white rounded-xl py-4 px-6 flex justify-between items-center cursor-pointer hover:border-stella-red/50 transition-colors ${isBranchDropdownOpen ? 'border-stella-red' : ''}`}
                     >
                       <span className="text-xs font-bold uppercase tracking-widest truncate">{selectedBranch?.name || 'Select Hub'}</span>
@@ -332,6 +343,35 @@ export default function CheckoutPage() {
                     <p className="text-gray-500 text-sm font-medium">No branches available.</p>
                   </div>
                 )}
+
+                <div className="flex items-center space-x-4 mb-6 mt-10">
+                  <h2 className="text-xl font-black uppercase tracking-widest text-white">Select Time Slot</h2>
+                </div>
+                <div className="relative z-40">
+                  <div
+                    onClick={() => {
+                      setIsTimeSlotDropdownOpen(!isTimeSlotDropdownOpen);
+                      setIsBranchDropdownOpen(false);
+                    }}
+                    className={`w-full bg-stella-black border border-white/10 text-white rounded-xl py-4 px-6 flex justify-between items-center cursor-pointer hover:border-stella-red/50 transition-colors ${isTimeSlotDropdownOpen ? 'border-stella-red' : ''}`}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-widest truncate">{selectedTimeSlot}</span>
+                    <span className={`text-stella-gold transition-transform duration-300 ${isTimeSlotDropdownOpen ? 'rotate-180' : ''}`}>▼</span>
+                  </div>
+                  {isTimeSlotDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-[#121212] border border-white/10 rounded-xl overflow-hidden shadow-2xl animate-fade-in">
+                      {['11:00 AM', '3:00 PM', '8:00 PM'].map((slot) => (
+                        <div
+                          key={slot}
+                          onClick={() => { setSelectedTimeSlot(slot); setIsTimeSlotDropdownOpen(false); }}
+                          className={`px-6 py-4 cursor-pointer border-b border-white/5 transition-colors hover:bg-white/5 text-xs font-bold uppercase tracking-widest text-white ${selectedTimeSlot === slot ? 'bg-stella-red/10 border-l-2 border-l-stella-red' : ''}`}
+                        >
+                          {slot}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
             )}
 

@@ -6,10 +6,11 @@ export default function CartDrawer({ onClose, onCheckout }) {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeFromCart = useCartStore((s) => s.removeFromCart);
 
-  const increaseQty = (item) => updateQuantity(item.id, item.quantity + 1);
+  const increaseQty = (item) => updateQuantity(item.cartItemId || String(item.id), item.quantity + 1);
   const decreaseQty = (item) => {
-    if (item.quantity > 1) updateQuantity(item.id, item.quantity - 1);
-    else removeFromCart(item.id);
+    const key = item.cartItemId || String(item.id);
+    if (item.quantity > 1) updateQuantity(key, item.quantity - 1);
+    else removeFromCart(key);
   };
 
   return (
@@ -47,7 +48,7 @@ export default function CartDrawer({ onClose, onCheckout }) {
             ) : (
               <ul className="space-y-6">
                 {cartItems.map((item) => (
-                  <li key={item.id} className="flex pb-6 border-b border-gray-800 last:border-b-0 last:pb-0 group">
+                  <li key={item.cartItemId || String(item.id)} className="flex pb-6 border-b border-gray-800 last:border-b-0 last:pb-0 group">
                     <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-700 bg-[#080808] p-2 flex items-center justify-center group-hover:border-gray-500 transition-colors">
                       <img src={item.img} alt={item.name} className="h-full w-full object-contain mix-blend-lighten" />
                     </div>
@@ -57,6 +58,9 @@ export default function CartDrawer({ onClose, onCheckout }) {
                           <h3 className="text-sm tracking-wide">{item.name}</h3>
                           <p className="ml-4">RS {(item.price * item.quantity).toFixed(2)}</p>
                         </div>
+                        {item.variantLabel && (
+                          <p className="text-[10px] text-stella-gold font-bold uppercase tracking-wider mb-1">{item.variantLabel}</p>
+                        )}
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">In Stock</p>
                       </div>
                       <div className="flex flex-1 items-end justify-between">
@@ -65,7 +69,7 @@ export default function CartDrawer({ onClose, onCheckout }) {
                           <span className="px-2 text-sm font-bold text-white w-6 text-center">{item.quantity}</span>
                           <button onClick={() => increaseQty(item)} className="px-3 text-gray-400 hover:text-white transition-colors">+</button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} type="button" className="font-medium text-gray-500 hover:text-stella-red text-xs uppercase tracking-widest transition-colors">
+                        <button onClick={() => removeFromCart(item.cartItemId || String(item.id))} type="button" className="font-medium text-gray-500 hover:text-stella-red text-xs uppercase tracking-widest transition-colors">
                           Remove
                         </button>
                       </div>

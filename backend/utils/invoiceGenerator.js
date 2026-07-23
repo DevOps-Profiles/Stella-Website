@@ -3,21 +3,22 @@ const fs = require('fs');
 const path = require('path');
 const converter = require('number-to-words');
 
-const invoiceDir = path.join(__dirname, '../invoices');
-if (!fs.existsSync(invoiceDir)) {
-    fs.mkdirSync(invoiceDir, { recursive: true });
-}
+
 
 async function generateInvoice(order, user, orderItems, shippingAddress = null) {
     return new Promise((resolve, reject) => {
         try {
             const fileName = `Invoice_${order.id}.pdf`;
-            const filePath = path.join(invoiceDir, fileName);
             // Use A4 size: 595.28 x 841.89 points
             const doc = new PDFDocument({ size: 'A4', margin: 30 });
             
-            const writeStream = fs.createWriteStream(filePath);
-            doc.pipe(writeStream);
+            let chunks = [];
+            doc.on('data', chunk => chunks.push(chunk));
+            doc.on('end', () => {
+                const buffer = Buffer.concat(chunks);
+                resolve({ fileName, buffer });
+            });
+            doc.on('error', reject);
 
             // Coordinates & Layout Settings
             const marginX = 40;
@@ -40,6 +41,11 @@ async function generateInvoice(order, user, orderItems, shippingAddress = null) 
             if (fs.existsSync(logoPath)) {
                 // Adjust width to match the aspect ratio of the logo
                 doc.image(logoPath, marginX, currentY, { width: 180 });
+            } else {
+                doc.font('Helvetica-Bold')
+                   .fontSize(20)
+                   .fillColor('#ed1c24')
+                   .text('STELLA MOBILES', marginX, currentY);
             }
             
             // Header Right - "Tax Invoice"
@@ -59,7 +65,7 @@ async function generateInvoice(order, user, orderItems, shippingAddress = null) 
             
             doc.font('Helvetica-Bold');
             doc.text('Invoice No', invLabelsX, rightY); 
-            doc.font('Helvetica').text(': ' + order.id.toString(), invValsX, rightY);
+            doc.font('Helvetica').text(': SHT/HQ/' + String(order.id).padStart(2, '0'), invValsX, rightY);
             
             rightY += 15;
             doc.font('Helvetica-Bold');
@@ -171,8 +177,17 @@ async function generateInvoice(order, user, orderItems, shippingAddress = null) 
                 const totalItemPrice = basePrice * item.quantity;
                 subtotal += totalItemPrice;
 
+                const codeParts = [];
+                if (item.hsn_code) codeParts.push(`HSN: ${item.hsn_code}`);
+                if (item.serial_no) codeParts.push(`S/N: ${item.serial_no}`);
+                if (item.imei1) codeParts.push(`IMEI 1: ${item.imei1}`);
+                if (item.imei2) codeParts.push(`IMEI 2: ${item.imei2}`);
+                const codesLine = codeParts.join(' | ');
+                const hasCodes = codesLine.length > 0;
+                
+                const rowHeight = hasCodes ? 35 : 25;
+                
                 // Draw vertical lines for this row
-                const rowHeight = 25;
                 doc.moveTo(marginX, rowY).lineTo(marginX, rowY + rowHeight).stroke();
                 doc.moveTo(cols.desc.x, rowY).lineTo(cols.desc.x, rowY + rowHeight).stroke();
                 doc.moveTo(cols.qty.x, rowY).lineTo(cols.qty.x, rowY + rowHeight).stroke();
@@ -180,9 +195,19 @@ async function generateInvoice(order, user, orderItems, shippingAddress = null) 
                 doc.moveTo(cols.total.x, rowY).lineTo(cols.total.x, rowY + rowHeight).stroke();
                 doc.moveTo(rightEdge, rowY).lineTo(rightEdge, rowY + rowHeight).stroke();
 
-                const itemTextY = rowY + 8;
-                doc.text((i + 1).toString(), cols.sno.x, itemTextY, { width: cols.sno.w, align: 'center' });
+                const itemTextY = rowY + (hasCodes ? 5 : 8);
+                
+                doc.font('Helvetica-Bold').fontSize(8);
                 doc.text(item.product_name || `Product #${item.product_id}`, cols.desc.x + 10, itemTextY, { width: cols.desc.w - 20, align: 'left' });
+                
+                if (hasCodes) {
+                    doc.font('Helvetica').fontSize(7).fillColor('#555555');
+                    doc.text(codesLine, cols.desc.x + 10, itemTextY + 12, { width: cols.desc.w - 20, align: 'left' });
+                    doc.fillColor('#000000'); // reset
+                }
+                
+                doc.font('Helvetica').fontSize(9);
+                doc.text((i + 1).toString(), cols.sno.x, itemTextY, { width: cols.sno.w, align: 'center' });
                 doc.text(item.quantity.toString(), cols.qty.x, itemTextY, { width: cols.qty.w, align: 'center' });
                 doc.text(basePrice.toFixed(2), cols.price.x, itemTextY, { width: cols.price.w, align: 'center' });
                 doc.text(totalItemPrice.toFixed(2), cols.total.x, itemTextY, { width: cols.total.w, align: 'center' });
@@ -314,11 +339,6 @@ async function generateInvoice(order, user, orderItems, shippingAddress = null) 
             doc.text('FOR FRANCHISE ENQUIRY\n+91 9345110510', rightEdge - 150, footerY, { width: 150, align: 'right' });
 
             doc.end();
-            
-            writeStream.on('finish', () => {
-                resolve({ filePath, fileName });
-            });
-            writeStream.on('error', reject);
         } catch (error) {
             reject(error);
         }

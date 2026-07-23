@@ -4,16 +4,44 @@ const db = require('../db');
 const multer = require('multer');
 const path = require('path');
 
-// Configure multer storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '../uploads/'));
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'prod-' + uniqueSuffix + path.extname(file.originalname));
+// Ensure variants column exists in products table
+async function ensureVariantsColumn() {
+  try {
+    const cols = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'products' AND COLUMN_NAME = 'variants'
+    `);
+    if (cols.rows.length === 0) {
+      await db.query('ALTER TABLE products ADD COLUMN variants JSON');
+      console.log('Added variants column to products table');
     }
-});
+  } catch (err) {
+    console.error('Error ensuring variants column:', err);
+  }
+}
+ensureVariantsColumn();
+
+// Ensure reviews column exists in products table
+async function ensureReviewsColumn() {
+  try {
+    const cols = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'products' AND COLUMN_NAME = 'reviews'
+    `);
+    if (cols.rows.length === 0) {
+      await db.query('ALTER TABLE products ADD COLUMN reviews JSON');
+      console.log('Added reviews column to products table');
+    }
+  } catch (err) {
+    console.error('Error ensuring reviews column:', err);
+  }
+}
+ensureReviewsColumn();
+
+// Configure multer storage to memory storage (so files are saved directly in database)
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // GET all products (supports optional ?category=CategoryName query filter)
@@ -37,7 +65,7 @@ router.get('/', async (req, res) => {
 // GET all categories (for admin dashboards and selectors)
 router.get('/categories', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM categories ORDER BY name ASC');
+        const result = await db.query('SELECT * FROM categories ORDER BY CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 99999 ELSE sort_order END ASC, name ASC');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -95,8 +123,15 @@ router.post('/', upload.array('images', 10), async (req, res) => {
         let additional_images = req.body.additional_images || [];
         
         if (req.files && req.files.length > 0) {
-            // Map file paths to URLs (e.g. /uploads/filename.jpg)
-            const fileUrls = req.files.map(f => `/uploads/${f.filename}`);
+            const fileUrls = [];
+            for (const file of req.files) {
+                const { buffer, mimetype, originalname } = file;
+                const uploadRes = await db.query(
+                    'INSERT INTO uploaded_images (data, mime_type, original_name) VALUES (?, ?, ?)',
+                    [buffer, mimetype, originalname]
+                );
+                fileUrls.push(`/api/images/${uploadRes.insertId}`);
+            }
             image_url = fileUrls[0]; // First image is main
             if (fileUrls.length > 1) {
                 additional_images = fileUrls.slice(1);
@@ -109,7 +144,7 @@ router.post('/', upload.array('images', 10), async (req, res) => {
         }
 
         const result = await db.query(
-            'INSERT INTO products (name, description, price, stock_quantity, image_url, additional_images, specs, category_id, is_deal_of_day, deal_label) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+            'INSERT INTO products (name, description, price, stock_quantity, image_url, additional_images, specs, category_id, is_deal_of_day, deal_label, variants, reviews) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
             [
                 name,
                 description || '',
@@ -121,6 +156,8 @@ router.post('/', upload.array('images', 10), async (req, res) => {
                 category_id || null,
                 is_deal_of_day === 'true' || is_deal_of_day === true,
                 deal_label || '',
+                req.body.variants || '[]',
+                req.body.reviews || '[]',
             ],
         );
         res.status(201).json(result.rows[0]);
@@ -151,8 +188,15 @@ router.put('/:id', upload.array('images', 10), async (req, res) => {
         let additional_images = req.body.additional_images || [];
         
         if (req.files && req.files.length > 0) {
-            // Map file paths to URLs (e.g. /uploads/filename.jpg)
-            const fileUrls = req.files.map(f => `/uploads/${f.filename}`);
+            const fileUrls = [];
+            for (const file of req.files) {
+                const { buffer, mimetype, originalname } = file;
+                const uploadRes = await db.query(
+                    'INSERT INTO uploaded_images (data, mime_type, original_name) VALUES (?, ?, ?)',
+                    [buffer, mimetype, originalname]
+                );
+                fileUrls.push(`/api/images/${uploadRes.insertId}`);
+            }
             image_url = fileUrls[0]; // First image is main
             if (fileUrls.length > 1) {
                 additional_images = fileUrls.slice(1);
@@ -165,7 +209,7 @@ router.put('/:id', upload.array('images', 10), async (req, res) => {
         }
 
         const result = await db.query(
-            'UPDATE products SET name = $1, description = $2, price = $3, stock_quantity = $4, image_url = $5, additional_images = $6, specs = $7, category_id = $8, is_deal_of_day = $9, deal_label = $10 WHERE id = $11 RETURNING *',
+            'UPDATE products SET name = $1, description = $2, price = $3, stock_quantity = $4, image_url = $5, additional_images = $6, specs = $7, category_id = $8, is_deal_of_day = $9, deal_label = $10, variants = $11, reviews = $12 WHERE id = $13 RETURNING *',
             [
                 name,
                 description,
@@ -177,6 +221,8 @@ router.put('/:id', upload.array('images', 10), async (req, res) => {
                 category_id,
                 is_deal_of_day,
                 deal_label,
+                req.body.variants || '[]',
+                req.body.reviews || '[]',
                 id,
             ],
         );
@@ -190,8 +236,25 @@ router.put('/:id', upload.array('images', 10), async (req, res) => {
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // Set product_id to NULL in order_items to satisfy foreign key RESTRICT constraint
+        await db.query('UPDATE order_items SET product_id = NULL WHERE product_id = $1', [id]);
         await db.query('DELETE FROM products WHERE id = $1', [id]);
         res.json({ message: 'Product deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST update reviews for a product (public user review submission)
+router.post('/:id/reviews', async (req, res) => {
+    const { id } = req.params;
+    const { reviews } = req.body;
+    try {
+        await db.query(
+            'UPDATE products SET reviews = $1 WHERE id = $2',
+            [JSON.stringify(reviews || []), id]
+        );
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

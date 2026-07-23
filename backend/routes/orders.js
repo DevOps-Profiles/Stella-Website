@@ -6,7 +6,64 @@ const Razorpay = require('razorpay');
 const fs = require('fs');
 const path = require('path');
 const { generateInvoice } = require('../utils/invoiceGenerator');
-const { sendInvoiceEmail } = require('../utils/emailService');
+const { sendInvoiceEmail, sendAdminNotificationEmail } = require('../utils/emailService');
+
+// Ensure variant_label column exists in order_items table
+async function ensureVariantLabelColumn() {
+  try {
+    const cols = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'order_items' AND COLUMN_NAME = 'variant_label'
+    `);
+    if (cols.rows.length === 0) {
+      await db.query('ALTER TABLE order_items ADD COLUMN variant_label VARCHAR(255)');
+      console.log('Added variant_label column to order_items table');
+    }
+  } catch (err) {
+    console.error('Error ensuring variant_label column:', err);
+  }
+}
+ensureVariantLabelColumn();
+
+// Ensure time_slot column exists in orders table
+async function ensureTimeSlotColumn() {
+  try {
+    const cols = await db.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'orders' AND COLUMN_NAME = 'time_slot'
+    `);
+    if (cols.rows.length === 0) {
+      await db.query('ALTER TABLE orders ADD COLUMN time_slot VARCHAR(50)');
+      console.log('Added time_slot column to orders table');
+    }
+  } catch (err) {
+    console.error('Error ensuring time_slot column:', err);
+  }
+}
+ensureTimeSlotColumn();
+
+// Ensure serial_no, hsn_code, imei1, imei2 columns exist in order_items table
+async function ensureProductCodeColumns() {
+  try {
+    const columnsToAdd = ['serial_no', 'hsn_code', 'imei1', 'imei2'];
+    for (const colName of columnsToAdd) {
+      const cols = await db.query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_NAME = 'order_items' AND COLUMN_NAME = $1
+      `, [colName]);
+      if (cols.rows.length === 0) {
+        await db.query(`ALTER TABLE order_items ADD COLUMN ${colName} VARCHAR(255) DEFAULT NULL`);
+        console.log(`Added ${colName} column to order_items table`);
+      }
+    }
+  } catch (err) {
+    console.error('Error ensuring product code columns:', err);
+  }
+}
+ensureProductCodeColumns();
 
 let razorpay = null;
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
@@ -53,7 +110,8 @@ router.post('/', async (req, res) => {
         delivery_type, 
         address_id, 
         branch_id, 
-        payment_method 
+        payment_method,
+        time_slot
     } = req.body;
 
     // Start a transaction
@@ -62,10 +120,15 @@ router.post('/', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // Calculate tomorrow's date for expected_delivery_date
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const expected_delivery_date = tomorrow.toISOString().split('T')[0];
+
         // 1. Create the order
         const orderResult = await client.query(
-            'INSERT INTO orders (user_id, total_amount, delivery_type, address_id, branch_id, payment_method) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [user_id, total_amount, delivery_type, address_id, branch_id, payment_method]
+            'INSERT INTO orders (user_id, total_amount, delivery_type, address_id, branch_id, payment_method, expected_delivery_date, time_slot) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [user_id, total_amount, delivery_type, address_id, branch_id, payment_method, expected_delivery_date, time_slot || null]
         );
         
         const order = orderResult.rows[0];
@@ -74,8 +137,8 @@ router.post('/', async (req, res) => {
         for (const item of items) {
             // Add to order_items
             await client.query(
-                'INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) VALUES ($1, $2, $3, $4)',
-                [order.id, item.product_id, item.quantity, item.price]
+                'INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase, variant_label) VALUES ($1, $2, $3, $4, $5)',
+                [order.id, item.product_id, item.quantity, item.price, item.variant_label || '']
             );
 
             // Deduct stock
@@ -86,6 +149,44 @@ router.post('/', async (req, res) => {
             
             if (updateResult.rowCount === 0) {
                 throw new Error(`Insufficient stock for product ID ${item.product_id}`);
+            }
+
+            // Deduct specific variant stock if variant_label is present
+            if (item.variant_label) {
+                const prodRes = await client.query('SELECT variants FROM products WHERE id = $1', [item.product_id]);
+                if (prodRes.rows.length > 0 && prodRes.rows[0].variants) {
+                    let variants = [];
+                    try {
+                        variants = typeof prodRes.rows[0].variants === 'string' 
+                            ? JSON.parse(prodRes.rows[0].variants) 
+                            : prodRes.rows[0].variants;
+                    } catch (e) {
+                        variants = [];
+                    }
+
+                    if (Array.isArray(variants) && variants.length > 0) {
+                        const labelParts = item.variant_label.split('/').map(s => s.trim().toLowerCase());
+                        const vIdx = variants.findIndex(v => {
+                            const vColor = (v.color || '').trim().toLowerCase();
+                            const vRam = (v.ram || '').trim().toLowerCase();
+                            const vStorage = (v.storage || '').trim().toLowerCase();
+                            
+                            return (vColor && labelParts.includes(vColor)) || 
+                                   (vRam && labelParts.includes(vRam)) || 
+                                   (vStorage && labelParts.includes(vStorage));
+                        });
+
+                        if (vIdx !== -1) {
+                            const v = variants[vIdx];
+                            const currentVStock = v.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+                            if (currentVStock < item.quantity) {
+                                throw new Error(`Insufficient stock for variant "${item.variant_label}"`);
+                            }
+                            variants[vIdx].stock_quantity = currentVStock - item.quantity;
+                            await client.query('UPDATE products SET variants = $1 WHERE id = $2', [JSON.stringify(variants), item.product_id]);
+                        }
+                    }
+                }
             }
         }
 
@@ -117,20 +218,26 @@ router.post('/', async (req, res) => {
             const invoiceItems = [];
             for (const item of items) {
                 const prod = await client.query('SELECT name FROM products WHERE id = $1', [item.product_id]);
+                const baseName = prod.rows[0] ? prod.rows[0].name : `Product #${item.product_id}`;
+                const variantSuffix = item.variant_label ? ` (${item.variant_label})` : '';
                 invoiceItems.push({
                     product_id: item.product_id,
-                    product_name: prod.rows[0] ? prod.rows[0].name : `Product #${item.product_id}`,
+                    product_name: baseName + variantSuffix,
                     quantity: item.quantity,
                     price_at_purchase: item.price
                 });
             }
             
-            // Generate Invoice
-            const invoiceFile = await generateInvoice(order, user, invoiceItems, shippingAddress);
-            
-            // Send Email
-            await sendInvoiceEmail(user, order, invoiceFile);
-            console.log('Invoice generated and emailed successfully for order', order.id);
+            // Customer invoice generation and email dispatch is deferred until the status update milestone:
+            // (Prepaid -> Processing status, COD/Store Pickup -> Delivered status)
+            console.log(`Customer invoice email deferred for order #${order.id} until status milestone is reached.`);
+
+            // Send Admin Notification Email for every order placed
+            try {
+                await sendAdminNotificationEmail(user, order, invoiceItems);
+            } catch (adminEmailErr) {
+                console.error('Failed to send order notification to admin:', adminEmailErr);
+            }
         } catch (invoiceErr) {
             console.error('Invoice Generation/Email Error:', invoiceErr);
             // Don't fail the order just because email/invoice failed
@@ -159,14 +266,15 @@ router.get('/user/:userId', async (req, res) => {
                             JSON_OBJECT(
                                 'id', oi.id,
                                 'product_id', p.id,
-                                'name', p.name,
+                                'name', COALESCE(p.name, 'Deleted Product'),
                                 'price', oi.price_at_purchase,
                                 'quantity', oi.quantity,
-                                'image_url', p.image_url
+                                'image_url', COALESCE(p.image_url, ''),
+                                'variant_label', oi.variant_label
                             )
                         )
                         FROM order_items oi
-                        JOIN products p ON oi.product_id = p.id
+                        LEFT JOIN products p ON oi.product_id = p.id
                         WHERE oi.order_id = o.id),
                         JSON_ARRAY()
                     ) as items
@@ -193,13 +301,15 @@ router.get('/', async (req, res) => {
     try {
         const result = await db.query(`
             SELECT o.*, u.name as user_name, u.phone_number as user_phone,
-                   (SELECT CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('"', c.name, '"')), ']')
+                   b.name as branch_name,
+                   (SELECT CONCAT('[', GROUP_CONCAT(DISTINCT CONCAT('"', COALESCE(c.name, 'Uncategorized'), '"')), ']')
                     FROM order_items oi
-                    JOIN products p ON oi.product_id = p.id
-                    JOIN categories c ON p.category_id = c.id
+                    LEFT JOIN products p ON oi.product_id = p.id
+                    LEFT JOIN categories c ON p.category_id = c.id
                     WHERE oi.order_id = o.id) as categories
             FROM orders o
             LEFT JOIN users u ON o.user_id = u.id
+            LEFT JOIN branches b ON o.branch_id = b.id
             ORDER BY o.created_at DESC
         `);
         const orders = result.rows.map((row) => ({
@@ -212,11 +322,47 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/orders/:id/items (fetch all items with product info for an order)
+router.get('/:id/items', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.query(`
+            SELECT oi.id as item_id, oi.product_id, COALESCE(p.name, 'Deleted Product') as name, 
+                   oi.quantity, oi.price_at_purchase as price, oi.variant_label,
+                   oi.serial_no, oi.hsn_code, oi.imei1, oi.imei2
+            FROM order_items oi 
+            LEFT JOIN products p ON oi.product_id = p.id 
+            WHERE oi.order_id = $1
+        `, [id]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // PUT /api/orders/:id/status (update order status + optional expected delivery date)
 router.put('/:id/status', async (req, res) => {
     const { id } = req.params;
-    const { status, expected_delivery_date } = req.body;
+    const { status, expected_delivery_date, itemCodes } = req.body;
     try {
+        // If itemCodes is provided, update the order_items table first!
+        if (itemCodes && typeof itemCodes === 'object') {
+            for (const [itemId, codes] of Object.entries(itemCodes)) {
+                await db.query(`
+                    UPDATE order_items 
+                    SET serial_no = $1, hsn_code = $2, imei1 = $3, imei2 = $4 
+                    WHERE id = $5 AND order_id = $6
+                `, [
+                    codes.serial_no || null,
+                    codes.hsn_code || null,
+                    codes.imei1 || null,
+                    codes.imei2 || null,
+                    itemId,
+                    id
+                ]);
+            }
+        }
+
         const result = await db.query(
             'UPDATE orders SET status = $1, expected_delivery_date = COALESCE($2, expected_delivery_date) WHERE id = $3 RETURNING *',
             [status, expected_delivery_date || null, id]
@@ -224,7 +370,79 @@ router.put('/:id/status', async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Order not found' });
         }
-        res.json(result.rows[0]);
+        
+        const order = result.rows[0];
+
+        const isCodOrPickup = order.payment_method?.toLowerCase() === 'cod' || 
+                              order.delivery_type?.toLowerCase() === 'pickup' || 
+                              order.delivery_type?.toLowerCase() === 'store_pickup' ||
+                              order.payment_method?.toLowerCase() === 'store';
+
+        const statusLower = (status || '').toLowerCase();
+        let triggerEmail = false;
+        
+        if (isCodOrPickup) {
+            triggerEmail = statusLower === 'delivered';
+        } else {
+            triggerEmail = statusLower === 'processing';
+        }
+
+        if (triggerEmail) {
+            try {
+                // Fetch user info
+                const userResult = await db.query('SELECT name, email, phone_number FROM users WHERE id = $1', [order.user_id]);
+                const user = userResult.rows[0] || { name: 'Customer' };
+                
+                // Fetch Shipping Address if applicable
+                let shippingAddress = null;
+                if (order.address_id) {
+                    const addrResult = await db.query('SELECT address_name, street_address, landmark, city, state, postal_code FROM addresses WHERE id = $1', [order.address_id]);
+                    shippingAddress = addrResult.rows[0] || null;
+                } else if (order.branch_id) {
+                    const branchResult = await db.query('SELECT name as address_name, address as street_address FROM branches WHERE id = $1', [order.branch_id]);
+                    if (branchResult.rows[0]) {
+                        shippingAddress = {
+                            address_name: 'Store Pickup: ' + branchResult.rows[0].address_name,
+                            street_address: branchResult.rows[0].street_address,
+                            city: '', state: '', postal_code: '', landmark: ''
+                        };
+                    }
+                }
+
+                // Fetch order items (including serial_no, hsn_code, imei1, imei2)
+                const itemsResult = await db.query(`
+                    SELECT oi.*, p.name as product_name 
+                    FROM order_items oi 
+                    LEFT JOIN products p ON oi.product_id = p.id 
+                    WHERE oi.order_id = $1
+                `, [order.id]);
+                
+                const invoiceItems = itemsResult.rows.map(item => {
+                    const variantSuffix = item.variant_label ? ` (${item.variant_label})` : '';
+                    return {
+                        product_id: item.product_id,
+                        product_name: (item.product_name || `Product #${item.product_id}`) + variantSuffix,
+                        quantity: item.quantity,
+                        price_at_purchase: item.price_at_purchase,
+                        serial_no: item.serial_no,
+                        hsn_code: item.hsn_code,
+                        imei1: item.imei1,
+                        imei2: item.imei2
+                    };
+                });
+                
+                // Generate Invoice
+                const invoiceFile = await generateInvoice(order, user, invoiceItems, shippingAddress);
+                
+                // Send Email
+                await sendInvoiceEmail(user, order, invoiceFile);
+                console.log('Invoice generated and emailed successfully on status change to', status, 'for order', order.id);
+            } catch (invoiceErr) {
+                console.error('Invoice Generation/Email Error on Delivered status:', invoiceErr);
+            }
+        }
+
+        res.json(order);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -258,15 +476,30 @@ router.get('/:id/invoice', async (req, res) => {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
-        const filePath = path.join(__dirname, '../invoices', `Invoice_${id}.pdf`);
-        if (fs.existsSync(filePath)) {
-            return res.download(filePath, `Stella_Mobiles_Invoice_${id}.pdf`);
-        }
-
-        // If file doesn't exist, we must generate it (for old orders)
         const orderResult = await db.query('SELECT * FROM orders WHERE id = $1', [id]);
         if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
         const order = orderResult.rows[0];
+
+        const isCodOrPickup = order.payment_method?.toLowerCase() === 'cod' || 
+                              order.delivery_type?.toLowerCase() === 'pickup' || 
+                              order.delivery_type?.toLowerCase() === 'store_pickup' ||
+                              order.payment_method?.toLowerCase() === 'store';
+
+        const statusLower = (order.status || '').toLowerCase();
+        let allowed = false;
+        
+        if (isCodOrPickup) {
+            allowed = statusLower === 'delivered';
+        } else {
+            allowed = ['processing', 'shipped', 'delivered'].includes(statusLower);
+        }
+
+        if (!allowed) {
+            const errorMsg = isCodOrPickup 
+                ? 'Invoice download is only available after the order is marked as delivered.'
+                : 'Invoice download is only available after the order is processed.';
+            return res.status(403).json({ error: errorMsg });
+        }
 
         const userResult = await db.query('SELECT name, email, phone_number FROM users WHERE id = $1', [order.user_id]);
         const user = userResult.rows[0] || { name: 'Customer' };
@@ -287,17 +520,29 @@ router.get('/:id/invoice', async (req, res) => {
         }
 
         const itemsResult = await db.query(`
-            SELECT oi.product_id, p.name as product_name, oi.quantity, oi.price_at_purchase
-            FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1
+            SELECT oi.product_id, COALESCE(p.name, 'Deleted Product') as product_name, 
+                   oi.quantity, oi.price_at_purchase, oi.variant_label,
+                   oi.serial_no, oi.hsn_code, oi.imei1, oi.imei2
+            FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1
         `, [id]);
         
-        await generateInvoice(order, user, itemsResult.rows, shippingAddress);
+        const formattedItems = itemsResult.rows.map(item => {
+            const variantSuffix = item.variant_label ? ` (${item.variant_label})` : '';
+            return {
+                ...item,
+                product_name: item.product_name + variantSuffix,
+                serial_no: item.serial_no,
+                hsn_code: item.hsn_code,
+                imei1: item.imei1,
+                imei2: item.imei2
+            };
+        });
         
-        if (fs.existsSync(filePath)) {
-            res.download(filePath, `Stella_Mobiles_Invoice_${id}.pdf`);
-        } else {
-            res.status(500).json({ error: 'Failed to generate invoice on the fly.' });
-        }
+        const { buffer } = await generateInvoice(order, user, formattedItems, shippingAddress);
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Stella_Mobiles_Invoice_${id}.pdf"`);
+        res.send(buffer);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to download invoice' });

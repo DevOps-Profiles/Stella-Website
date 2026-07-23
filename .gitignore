@@ -1,12 +1,21 @@
-Business Brochure.pdf
-database_schema.sql
-design_system.md
-full_schema.sql
-HEAD OFFICE.docx
-implementation_plan.md
-tasks.md
-Logo*
-WhatsApp*
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# OS
 .DS_Store
-backend.zip
-frontend.zip
+Thumbs.db

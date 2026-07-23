@@ -7,6 +7,14 @@ import { ClipboardList, FileText, Folder, LogOut, Users, User, Phone, Mail } fro
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
+const DEFAULT_PRODUCT_REVIEWS = [
+  { id: 1, name: 'Michael T.', title: 'Exceeded all expectations!', content: "I was hesitant about upgrading, but the display is the brightest I've ever seen, and the battery lasts two full days.", stars: 5 },
+  { id: 2, name: 'Priya K.', title: 'Premium experience, premium product', content: "Picked up in-store and the team was incredibly helpful with setup. The device quality is unreal for the price.", stars: 5 },
+  { id: 3, name: 'Arjun S.', title: 'Best purchase this year', content: "Smooth, fast, and the camera is phenomenal. Stella's store experience makes it even better — will definitely return.", stars: 5 },
+  { id: 4, name: 'Deepa R.', title: 'Worth every rupee', content: 'Bought for my husband as a gift. He absolutely loves it. The packaging and presentation from Stella was top class.', stars: 5 },
+  { id: 5, name: 'Karthik B.', title: 'Stellar performance', content: 'Gaming, photography, everyday use — handles everything flawlessly. No lag, no heat issues. Very impressed.', stars: 5 },
+];
+
 const ADMIN_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'inventory', label: 'Products' },
@@ -421,12 +429,19 @@ export default function AdminDashboardPage() {
 
 
   const [editingProduct, setEditingProduct] = useState(null);
+  const [showCodesModal, setShowCodesModal] = useState(false);
+  const [modalOrder, setModalOrder] = useState(null);
+  const [modalItems, setModalItems] = useState([]);
+  const [itemCodesState, setItemCodesState] = useState({});
+  const [codesModalLoading, setCodesModalLoading] = useState(false);
   const [manufacturerUrl, setManufacturerUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [stats, setStats] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('week');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -445,6 +460,18 @@ export default function AdminDashboardPage() {
   const [categoryFilters, setCategoryFilters] = useState({});
   const [dbCategories, setDbCategories] = useState([]);
   const [selectedFilterCategory, setSelectedFilterCategory] = useState('');
+
+  useEffect(() => {
+    if (productForm.variants && productForm.variants.length > 0) {
+      const totalStock = productForm.variants.reduce((sum, v) => {
+        const vStock = v.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+        return sum + (isNaN(vStock) ? 0 : vStock);
+      }, 0);
+      if (productForm.stock_quantity !== totalStock) {
+        setProductForm(prev => ({ ...prev, stock_quantity: totalStock }));
+      }
+    }
+  }, [productForm.variants]);
 
   useEffect(() => {
     if (!productForm.category_id) {
@@ -536,7 +563,12 @@ export default function AdminDashboardPage() {
 
   const fetchStats = useCallback(async (filter = selectedTimeFilter) => {
     try {
-      const response = await fetch(`${API}/stats?filter=${filter}`);
+      let url = `${API}/stats?filter=${filter}`;
+      if (filter === 'custom') {
+        if (!customStartDate || !customEndDate) return;
+        url = `${API}/stats?startDate=${customStartDate}&endDate=${customEndDate}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setStats(data.stats);
@@ -545,7 +577,13 @@ export default function AdminDashboardPage() {
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
-  }, [selectedTimeFilter]);
+  }, [selectedTimeFilter, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    if (selectedTimeFilter === 'custom' && customStartDate && customEndDate) {
+      fetchStats('custom');
+    }
+  }, [customStartDate, customEndDate, selectedTimeFilter, fetchStats]);
 
   const downloadReport = () => {
     if (!chartData || chartData.length === 0) {
@@ -560,11 +598,15 @@ export default function AdminDashboardPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `revenue_report_${selectedTimeFilter}.csv`);
+    let filename = `revenue_report_${selectedTimeFilter}.csv`;
+    if (selectedTimeFilter === 'custom') {
+      filename = `revenue_report_${customStartDate}_to_${customEndDate}.csv`;
+    }
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    addToast(`Report for ${selectedTimeFilter} downloaded successfully!`, 'success');
+    addToast(`Report for ${selectedTimeFilter === 'custom' ? `${customStartDate} to ${customEndDate}` : selectedTimeFilter} downloaded successfully!`, 'success');
   };
 
   const fetchProducts = useCallback(async () => {
@@ -594,8 +636,16 @@ export default function AdminDashboardPage() {
       const response = await fetch(`${API}/products/categories`);
       if (response.ok) {
         const data = await response.json();
-        setDbCategories(data);
-        if (data.length > 0) setSelectedFilterCategory(data[0].name);
+        const sorted = [...data].sort((a, b) => {
+          const orderA = a.sort_order && Number(a.sort_order) > 0 ? Number(a.sort_order) : 99999;
+          const orderB = b.sort_order && Number(b.sort_order) > 0 ? Number(b.sort_order) : 99999;
+          if (orderA !== orderB) {
+            return orderA - orderB;
+          }
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        setDbCategories(sorted);
+        if (sorted.length > 0) setSelectedFilterCategory(sorted[0].name);
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -667,7 +717,7 @@ export default function AdminDashboardPage() {
 
   const openAddProduct = () => {
     setEditingProduct(null);
-    setProductForm({ name: '', category_id: '', price: '', stock_quantity: '', description: '', image_url: '', additional_images: [], specs: {} });
+    setProductForm({ name: '', category_id: '', price: '', stock_quantity: '', description: '', image_url: '', additional_images: [], specs: {}, variants: [], reviews: DEFAULT_PRODUCT_REVIEWS });
     setProductImages([]);
     setSpecsList([]);
     setCategorySpecs({});
@@ -685,7 +735,20 @@ export default function AdminDashboardPage() {
       parsedAdditionalImages = p.additional_images || [];
     }
     
-    setProductForm({ ...p, additional_images: parsedAdditionalImages });
+    let parsedVariants = [];
+    if (p.variants) {
+      try { parsedVariants = typeof p.variants === 'string' ? JSON.parse(p.variants) : p.variants; } catch(e) { parsedVariants = []; }
+    }
+
+    let parsedReviews = [];
+    if (p.reviews) {
+      try { parsedReviews = typeof p.reviews === 'string' ? JSON.parse(p.reviews) : p.reviews; } catch(e) { parsedReviews = []; }
+    }
+    if (!Array.isArray(parsedReviews) || parsedReviews.length === 0) {
+      parsedReviews = DEFAULT_PRODUCT_REVIEWS;
+    }
+    
+    setProductForm({ ...p, additional_images: parsedAdditionalImages, variants: parsedVariants, reviews: parsedReviews });
     setProductImages([]);
     
     let parsedSpecs = {};
@@ -737,6 +800,8 @@ export default function AdminDashboardPage() {
       formData.append('stock_quantity', productForm.stock_quantity);
       formData.append('category_id', productForm.category_id);
       formData.append('specs', JSON.stringify(specsObj));
+      formData.append('variants', JSON.stringify(productForm.variants || []));
+      formData.append('reviews', JSON.stringify(productForm.reviews || []));
       productImages.forEach((file) => formData.append('images', file));
       if (editingProduct && productImages.length === 0) {
         formData.append('image_url', productForm.image_url);
@@ -774,7 +839,7 @@ export default function AdminDashboardPage() {
 
   const openAddCategory = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', filters: [] });
+    setCategoryForm({ name: '', description: '', filters: [], sort_order: 0 });
     setShowCategoryModal(true);
   };
 
@@ -788,7 +853,7 @@ export default function AdminDashboardPage() {
         console.error('Error parsing filters', e);
       }
     }
-    setCategoryForm({ name: cat.name, description: cat.description || '', filters: parsedFilters });
+    setCategoryForm({ name: cat.name, description: cat.description || '', filters: parsedFilters, sort_order: cat.sort_order || 0 });
     setShowCategoryModal(true);
   };
 
@@ -880,16 +945,50 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const updateOrderStatus = async (order, newStatus) => {
+  const updateOrderStatus = async (order, newStatus, optionalItemCodes = null) => {
+    if (newStatus?.toLowerCase() === 'processing' && !optionalItemCodes) {
+      setModalOrder(order);
+      setShowCodesModal(true);
+      setCodesModalLoading(true);
+      try {
+        const res = await fetch(`${API}/orders/${order.id}/items`);
+        const items = await res.json();
+        setModalItems(items || []);
+        
+        const initialCodes = {};
+        (items || []).forEach(item => {
+          initialCodes[item.item_id] = {
+            serial_no: item.serial_no || '',
+            hsn_code: item.hsn_code || '',
+            imei1: item.imei1 || '',
+            imei2: item.imei2 || ''
+          };
+        });
+        setItemCodesState(initialCodes);
+      } catch (err) {
+        addToast('Failed to fetch order items for processing', 'error');
+      } finally {
+        setCodesModalLoading(false);
+      }
+      return;
+    }
+
     try {
       const response = await fetch(`${API}/orders/${order.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ 
+          status: newStatus,
+          itemCodes: optionalItemCodes
+        }),
       });
       if (response.ok) {
         setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o)));
-        addToast('Order status updated', 'success');
+        addToast(`Order status updated to ${newStatus}`, 'success');
+        setShowCodesModal(false);
+        setModalOrder(null);
+        setModalItems([]);
+        setItemCodesState({});
       } else throw new Error('Failed to update status');
     } catch (err) {
       addToast(`Error updating order fulfillment status: ${err.message}`, 'error');
@@ -1007,16 +1106,41 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto px-6">
         {activeTab === 'overview' && (
           <div className="space-y-12 animate-fade-up">
-            <div className="flex justify-between items-center w-full">
-              <div className="flex items-center space-x-2 bg-white/5 p-1 rounded-[1rem] w-fit border border-white/[0.05]">
-                {['week', 'month', 'year'].map((f) => (
-                  <button key={f} type="button" onClick={() => setTimeFilter(f)} className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedTimeFilter === f ? 'bg-white text-black shadow-md shadow-white/10' : 'text-gray-400 hover:text-white'}`}>{f === 'week' ? 'Week' : f === 'month' ? 'Month' : 'Year'}</button>
-                ))}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center space-x-2 bg-white/5 p-1 rounded-[1rem] w-fit border border-white/[0.05]">
+                  {['week', 'month', 'year', 'custom'].map((f) => (
+                    <button key={f} type="button" onClick={() => setTimeFilter(f)} className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${selectedTimeFilter === f ? 'bg-white text-black shadow-md shadow-white/10' : 'text-gray-400 hover:text-white'}`}>{f === 'week' ? 'Week' : f === 'month' ? 'Month' : f === 'year' ? 'Year' : 'Custom'}</button>
+                  ))}
+                </div>
+                
+                {selectedTimeFilter === 'custom' && (
+                  <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/[0.05]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-wider">Start</span>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="bg-black border border-white/10 rounded-lg px-2.5 py-1 text-white text-[10px] font-black outline-none focus:border-stella-red"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-wider">End</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="bg-black border border-white/10 rounded-lg px-2.5 py-1 text-white text-[10px] font-black outline-none focus:border-stella-red"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <button 
                 type="button" 
                 onClick={downloadReport}
-                className="stella-button bg-stella-gold/10 text-stella-gold border border-stella-gold/20 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-stella-gold hover:text-black transition-colors"
+                className="stella-button bg-stella-gold/10 text-stella-gold border border-stella-gold/20 px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[9px] hover:bg-stella-gold hover:text-black transition-colors cursor-pointer"
               >
                 Download Report
               </button>
@@ -1033,7 +1157,7 @@ export default function AdminDashboardPage() {
             <div className="bg-[#0e0e11] rounded-[2rem] border border-white/[0.05] shadow-2xl p-10 lg:p-16 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-stella-red/5 to-transparent pointer-events-none blur-3xl" />
               <h3 className="text-[10px] font-black text-white uppercase tracking-[0.4em] mb-12 flex items-center gap-3 relative z-10">
-                <span className="w-1.5 h-1.5 bg-stella-red rounded-full" /> {selectedTimeFilter === 'year' ? '12-Month' : selectedTimeFilter === 'month' ? '30-Day' : '7-Day'} Revenue Matrix
+                <span className="w-1.5 h-1.5 bg-stella-red rounded-full" /> {selectedTimeFilter === 'year' ? '12-Month' : selectedTimeFilter === 'month' ? '30-Day' : selectedTimeFilter === 'custom' ? 'Custom Period' : '7-Day'} Revenue Matrix
               </h3>
               {chartData.length > 0 ? (
                 <div className="h-64 flex items-end gap-2 lg:gap-4 w-full relative z-10">
@@ -1306,6 +1430,162 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Product Variants Section */}
+                <div className="bg-[#0e0e11] rounded-[2rem] border border-white/[0.05] p-10 space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-sm font-black text-stella-gold uppercase tracking-[0.4em]">Product Variants</h3>
+                      <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mt-1">Configure price overrides by RAM, Storage, and Colour options.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentVariants = productForm.variants || [];
+                        setProductForm({
+                          ...productForm,
+                          variants: [...currentVariants, { color: '', ram: '', storage: '', price: productForm.price || '', stock_quantity: productForm.stock_quantity || 10 }]
+                        });
+                      }}
+                      className="text-white text-[8px] font-black uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 hover:border-stella-gold transition-colors"
+                    >
+                      + Add Variant
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(productForm.variants || []).map((variant, vidx) => (
+                      <div key={vidx} className="p-5 rounded-2xl border border-white/5 bg-black/40 relative space-y-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextVariants = (productForm.variants || []).filter((_, i) => i !== vidx);
+                            setProductForm({ ...productForm, variants: nextVariants });
+                          }}
+                          className="absolute top-4 right-4 text-[8px] font-black text-stella-red uppercase tracking-widest hover:underline"
+                        >
+                          Remove
+                        </button>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 pt-4">
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[7px] text-gray-500 font-bold uppercase">Colour</label>
+                              <button
+                                type="button"
+                                title="Replicate specs without colour"
+                                onClick={() => {
+                                  const newVariant = {
+                                    color: '',
+                                    ram: variant.ram || '',
+                                    storage: variant.storage || '',
+                                    price: variant.price || '',
+                                    stock_quantity: variant.stock_quantity !== undefined ? variant.stock_quantity : ''
+                                  };
+                                  setProductForm(prev => ({
+                                    ...prev,
+                                    variants: [...(prev.variants || []), newVariant]
+                                  }));
+                                  addToast('Variant specifications replicated!', 'info');
+                                }}
+                                className="text-stella-gold hover:text-yellow-400 font-black text-[8px] tracking-wider px-1 hover:bg-white/5 rounded transition-colors"
+                              >
+                                + Replicate
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={variant.color || ''}
+                              onChange={(e) => {
+                                const next = [...productForm.variants];
+                                next[vidx] = { ...variant, color: e.target.value };
+                                setProductForm({ ...productForm, variants: next });
+                              }}
+                              placeholder="e.g. Titanium Black"
+                              className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">RAM</label>
+                            <input
+                              type="text"
+                              list={`ram-options-${vidx}`}
+                              value={variant.ram || ''}
+                              onChange={(e) => {
+                                const next = [...productForm.variants];
+                                next[vidx] = { ...variant, ram: e.target.value };
+                                setProductForm({ ...productForm, variants: next });
+                              }}
+                              placeholder="e.g. 12GB"
+                              className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                            />
+                            <datalist id={`ram-options-${vidx}`}>
+                              <option value="6GB" />
+                              <option value="8GB" />
+                              <option value="12GB" />
+                              <option value="16GB" />
+                              <option value="24GB" />
+                            </datalist>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">Storage</label>
+                            <input
+                              type="text"
+                              list={`storage-options-${vidx}`}
+                              value={variant.storage || ''}
+                              onChange={(e) => {
+                                const next = [...productForm.variants];
+                                next[vidx] = { ...variant, storage: e.target.value };
+                                setProductForm({ ...productForm, variants: next });
+                              }}
+                              placeholder="e.g. 256GB"
+                              className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                            />
+                            <datalist id={`storage-options-${vidx}`}>
+                              <option value="64GB" />
+                              <option value="128GB" />
+                              <option value="256GB" />
+                              <option value="512GB" />
+                              <option value="1TB" />
+                              <option value="2TB" />
+                            </datalist>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">Variant Price (₹)</label>
+                            <input
+                              type="number"
+                              value={variant.price || ''}
+                              onChange={(e) => {
+                                const next = [...productForm.variants];
+                                next[vidx] = { ...variant, price: parseFloat(e.target.value) || '' };
+                                setProductForm({ ...productForm, variants: next });
+                              }}
+                              placeholder="e.g. 79999"
+                              className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">Variant Stock</label>
+                            <input
+                              type="number"
+                              value={variant.stock_quantity !== undefined ? variant.stock_quantity : ''}
+                              onChange={(e) => {
+                                const next = [...productForm.variants];
+                                next[vidx] = { ...variant, stock_quantity: e.target.value === '' ? '' : parseInt(e.target.value, 10) };
+                                setProductForm({ ...productForm, variants: next });
+                              }}
+                              placeholder="e.g. 10"
+                              className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(productForm.variants || []).length === 0 && (
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center py-4">No variants added. This product will use its base price.</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Sidebar: Images and Manufacturer Scraping URL */}
@@ -1381,6 +1661,118 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Product Reviews Editor */}
+                <div className="bg-[#0e0e11] rounded-[2rem] border border-white/[0.05] p-10 space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <h3 className="text-sm font-black text-stella-gold uppercase tracking-[0.4em]">Product Reviews</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newReview = {
+                          id: Date.now(),
+                          name: '',
+                          title: '',
+                          content: '',
+                          stars: 5
+                        };
+                        setProductForm(prev => ({
+                          ...prev,
+                          reviews: [...(prev.reviews || []), newReview]
+                        }));
+                      }}
+                      className="text-[9px] font-black uppercase tracking-wider text-stella-red hover:text-red-400 transition-colors cursor-pointer"
+                    >
+                      + Add Review
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-6 max-h-[350px] overflow-y-auto admin-custom-scrollbar pr-2">
+                    {(productForm.reviews || []).map((rev, revIdx) => (
+                      <div key={rev.id || revIdx} className="bg-black/50 border border-white/[0.03] rounded-2xl p-5 space-y-4 relative group">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductForm(prev => ({
+                              ...prev,
+                              reviews: prev.reviews.filter((_, i) => i !== revIdx)
+                            }));
+                          }}
+                          className="absolute top-4 right-4 text-[9px] font-black uppercase tracking-wider text-stella-red hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">Reviewer Name</label>
+                            <input
+                              type="text"
+                              value={rev.name || ''}
+                              onChange={(e) => {
+                                const next = [...productForm.reviews];
+                                next[revIdx] = { ...rev, name: e.target.value };
+                                setProductForm({ ...productForm, reviews: next });
+                              }}
+                              placeholder="Michael T."
+                              className="w-full bg-black border border-white/[0.05] rounded-lg px-3 py-2 text-white text-[10px] font-bold focus:border-stella-red outline-none"
+                            />
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <label className="text-[7px] text-gray-500 font-bold uppercase">Rating (1-5)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={rev.stars || 5}
+                              onChange={(e) => {
+                                const next = [...productForm.reviews];
+                                next[revIdx] = { ...rev, stars: parseInt(e.target.value) || 5 };
+                                setProductForm({ ...productForm, reviews: next });
+                              }}
+                              className="w-full bg-black border border-white/[0.05] rounded-lg px-3 py-2 text-white text-[10px] font-bold focus:border-stella-red outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[7px] text-gray-500 font-bold uppercase">Review Title</label>
+                          <input
+                            type="text"
+                            value={rev.title || ''}
+                            onChange={(e) => {
+                              const next = [...productForm.reviews];
+                              next[revIdx] = { ...rev, title: e.target.value };
+                              setProductForm({ ...productForm, reviews: next });
+                            }}
+                            placeholder="Exceeded all expectations!"
+                            className="w-full bg-black border border-white/[0.05] rounded-lg px-3 py-2 text-white text-[10px] font-bold focus:border-stella-red outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[7px] text-gray-500 font-bold uppercase">Review Comment</label>
+                          <textarea
+                            value={rev.content || ''}
+                            onChange={(e) => {
+                              const next = [...productForm.reviews];
+                              next[revIdx] = { ...rev, content: e.target.value };
+                              setProductForm({ ...productForm, reviews: next });
+                            }}
+                            rows={3}
+                            placeholder="Write review body content here..."
+                            className="w-full bg-black border border-white/[0.05] rounded-lg px-3 py-2 text-white text-[10px] font-medium focus:border-stella-red outline-none resize-none"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {(productForm.reviews || []).length === 0 && (
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center py-6">No custom reviews configured. Display will fall back to site-wide default reviews.</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1450,6 +1842,11 @@ export default function AdminDashboardPage() {
                       <td className="px-12 py-10">
                         <div className="flex flex-col">
                           <span className="text-white font-black uppercase tracking-widest text-sm">{order.delivery_type}</span>
+                          {order.delivery_type === 'pickup' && (
+                            <span className="text-stella-gold text-[9px] mt-1 font-bold uppercase tracking-wider">
+                              {order.branch_name || 'Store Hub'} {order.time_slot ? `(${order.time_slot})` : ''}
+                            </span>
+                          )}
                           <span className="text-gray-500 text-[10px] mt-1 uppercase tracking-wider font-bold">{order.payment_method}</span>
                         </div>
                       </td>
@@ -2146,11 +2543,11 @@ export default function AdminDashboardPage() {
                             nextDeals[didx] = { ...deal, productId: e.target.value };
                             updateHomepage('deals.items', nextDeals);
                           }}
-                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2 px-3 text-[10px] font-bold"
+                          className="w-full bg-transparent border border-white/10 text-white rounded-lg py-2 px-3 text-[10px] font-bold focus:outline-none cursor-pointer"
                         >
-                          <option value="">Select a Product</option>
+                          <option className="bg-[#0c0c0e] text-white" value="">Select a Product</option>
                           {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
+                            <option className="bg-[#0c0c0e] text-white" key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2267,19 +2664,19 @@ export default function AdminDashboardPage() {
                           }
                           onChange={(e) => {
                             if (e.target.value !== 'custom') {
-                              const nextSlides = [...homepage.hero.slides];
-                              nextSlides[sidx] = { ...slide, titleSize: e.target.value };
-                              updateHomepage('hero.slides', nextSlides);
+                               const nextSlides = [...homepage.hero.slides];
+                               nextSlides[sidx] = { ...slide, titleSize: e.target.value };
+                               updateHomepage('hero.slides', nextSlides);
                             }
                           }}
-                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
+                          className="w-full bg-transparent border border-white/10 text-white rounded-lg py-2.5 px-4 text-xs font-bold focus:outline-none"
                         >
-                          <option value="">Default</option>
-                          <option value="text-[6vw] md:text-[3vw]">Small</option>
-                          <option value="text-[8vw] md:text-[4vw]">Medium</option>
-                          <option value="text-[12vw] md:text-[6vw]">Large</option>
-                          <option value="text-[14vw] md:text-[7vw]">Extra Large</option>
-                          <option value="custom">Custom</option>
+                          <option className="bg-[#0c0c0e] text-white" value="">Default</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[6vw] md:text-[3vw]">Small</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[8vw] md:text-[4vw]">Medium</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[12vw] md:text-[6vw]">Large</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[14vw] md:text-[7vw]">Extra Large</option>
+                          <option className="bg-[#0c0c0e] text-white" value="custom">Custom</option>
                         </select>
                       </div>
                       <div className="md:col-span-3 space-y-2">
@@ -2320,19 +2717,19 @@ export default function AdminDashboardPage() {
                           }
                           onChange={(e) => {
                             if (e.target.value !== 'custom') {
-                              const nextSlides = [...homepage.hero.slides];
-                              nextSlides[sidx] = { ...slide, subtitleSize: e.target.value };
-                              updateHomepage('hero.slides', nextSlides);
+                               const nextSlides = [...homepage.hero.slides];
+                               nextSlides[sidx] = { ...slide, subtitleSize: e.target.value };
+                               updateHomepage('hero.slides', nextSlides);
                             }
                           }}
-                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-medium"
+                          className="w-full bg-transparent border border-white/10 text-white rounded-lg py-2.5 px-4 text-xs font-medium focus:outline-none"
                         >
-                          <option value="">Default</option>
-                          <option value="text-[8px] md:text-[10px]">Small</option>
-                          <option value="text-[12px] md:text-sm">Medium</option>
-                          <option value="text-sm md:text-base">Large</option>
-                          <option value="text-base md:text-lg">Extra Large</option>
-                          <option value="custom">Custom</option>
+                          <option className="bg-[#0c0c0e] text-white" value="">Default</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[8px] md:text-[10px]">Small</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-[12px] md:text-sm">Medium</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-sm md:text-base">Large</option>
+                          <option className="bg-[#0c0c0e] text-white" value="text-base md:text-lg">Extra Large</option>
+                          <option className="bg-[#0c0c0e] text-white" value="custom">Custom</option>
                         </select>
                       </div>
                       <div className="md:col-span-3 space-y-2">
@@ -2360,11 +2757,11 @@ export default function AdminDashboardPage() {
                             nextSlides[sidx] = { ...slide, categoryId: e.target.value };
                             updateHomepage('hero.slides', nextSlides);
                           }}
-                          className="w-full bg-white/5 border border-white/5 text-white rounded-lg py-2.5 px-4 text-xs font-bold"
+                          className="w-full bg-transparent border border-white/10 text-white rounded-lg py-2.5 px-4 text-xs font-bold focus:outline-none"
                         >
-                          <option value="">No Link</option>
+                          <option className="bg-[#0c0c0e] text-white" value="">No Link</option>
                           {dbCategories.map(cat => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            <option className="bg-[#0c0c0e] text-white" key={cat.id} value={cat.name}>{cat.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2540,9 +2937,15 @@ export default function AdminDashboardPage() {
               <h2 className="text-2xl font-black uppercase tracking-widest text-white">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); saveCategory(); }} className="space-y-6">
-              <div className="space-y-2">
-                <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Category Name</label>
-                <input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required className="w-full bg-black/50 border border-white/[0.05] rounded-xl px-6 py-4 text-white text-sm focus:border-stella-red outline-none transition-colors" placeholder="e.g. Tablets" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Category Name</label>
+                  <input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required className="w-full bg-black/50 border border-white/[0.05] rounded-xl px-6 py-4 text-white text-sm focus:border-stella-red outline-none transition-colors" placeholder="e.g. Tablets" />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Sort Order</label>
+                  <input type="number" value={categoryForm.sort_order ?? 0} onChange={(e) => setCategoryForm({ ...categoryForm, sort_order: parseInt(e.target.value, 10) || 0 })} required className="w-full bg-black/50 border border-white/[0.05] rounded-xl px-6 py-4 text-white text-sm focus:border-stella-red outline-none transition-colors" placeholder="e.g. 1" />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="block text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Description</label>
@@ -2594,6 +2997,124 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {showCodesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-stella-black/80 backdrop-blur-sm" onClick={() => { setShowCodesModal(false); setModalOrder(null); }} />
+          <div className="relative bg-stella-charcoal border border-white/10 rounded-[2rem] w-full max-w-2xl p-10 shadow-2xl animate-fade-up">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-stella-red/10 flex items-center justify-center border border-stella-red/20 text-stella-red font-bold text-xl">ℹ️</div>
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-widest text-white">Order Processing Codes</h2>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">Enter Serial Numbers, HSN and IMEIs (Optional)</p>
+              </div>
+            </div>
+            
+            {codesModalLoading ? (
+              <div className="text-white text-center py-10 font-bold uppercase tracking-widest text-xs animate-pulse">Loading items...</div>
+            ) : (
+              <div className="space-y-6 max-h-[360px] overflow-y-auto pr-2 admin-custom-scrollbar">
+                {modalItems.map((item) => (
+                  <div key={item.item_id} className="p-5 rounded-2xl border border-white/5 bg-black/40 space-y-4">
+                    <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                      <span className="text-white font-black text-xs uppercase tracking-wider">{item.name}</span>
+                      {item.variant_label && (
+                        <span className="text-[8px] font-black text-stella-gold bg-white/5 px-2 py-0.5 rounded-full uppercase">{item.variant_label}</span>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">Serial No</label>
+                        <input
+                          type="text"
+                          value={itemCodesState[item.item_id]?.serial_no || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setItemCodesState(prev => ({
+                              ...prev,
+                              [item.item_id]: { ...prev[item.item_id], serial_no: val }
+                            }));
+                          }}
+                          placeholder="e.g. SN12345"
+                          className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">HSN Code</label>
+                        <input
+                          type="text"
+                          value={itemCodesState[item.item_id]?.hsn_code || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setItemCodesState(prev => ({
+                              ...prev,
+                              [item.item_id]: { ...prev[item.item_id], hsn_code: val }
+                            }));
+                          }}
+                          placeholder="e.g. 8517"
+                          className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">IMEI 1</label>
+                        <input
+                          type="text"
+                          value={itemCodesState[item.item_id]?.imei1 || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setItemCodesState(prev => ({
+                              ...prev,
+                              [item.item_id]: { ...prev[item.item_id], imei1: val }
+                            }));
+                          }}
+                          placeholder="e.g. 35824..."
+                          className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[7px] text-gray-500 font-bold uppercase">IMEI 2</label>
+                        <input
+                          type="text"
+                          value={itemCodesState[item.item_id]?.imei2 || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setItemCodesState(prev => ({
+                              ...prev,
+                              [item.item_id]: { ...prev[item.item_id], imei2: val }
+                            }));
+                          }}
+                          placeholder="e.g. 35824..."
+                          className="w-full bg-black border border-white/[0.05] rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-stella-red outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex items-center space-x-4 pt-6 mt-6 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => { setShowCodesModal(false); setModalOrder(null); }}
+                className="flex-1 bg-white/[0.03] border border-white/10 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => updateOrderStatus(modalOrder, 'processing', itemCodesState)}
+                className="flex-1 bg-stella-red text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-stella-red/20 hover:bg-red-700 transition-colors"
+              >
+                Update Status to Processing
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -12,8 +12,12 @@ function getPoolConfig() {
       database: url.pathname.replace(/^\//, ''),
       waitForConnections: true,
       connectionLimit: 10,
+      maxIdle: 10,
+      idleTimeout: 30000, // 30 seconds idle timeout to close connections cleanly
       multipleStatements: true,
       dateStrings: false,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
     };
   }
 
@@ -25,12 +29,27 @@ function getPoolConfig() {
     database: process.env.DB_NAME || 'stella_mobiles',
     waitForConnections: true,
     connectionLimit: 10,
+    maxIdle: 10,
+    idleTimeout: 30000, // 30 seconds idle timeout
     multipleStatements: true,
     dateStrings: false,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
   };
 }
 
 const pool = mysql.createPool(getPoolConfig());
+
+// Handle connection-level error events to prevent fatal unhandled crashes
+pool.on('connection', (connection) => {
+  connection.on('error', (err) => {
+    if (err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+      // Quietly swallow normal connection drops from Hostinger MySQL idle terminations
+      return;
+    }
+    console.error('MySQL Pool Connection socket error:', err);
+  });
+});
 
 function toMysqlPlaceholders(sql) {
   return sql.replace(/\$(\d+)/g, '?');

@@ -131,11 +131,19 @@ export default function App() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && Array.isArray(data) && data.length > 0) {
-          setCategories(data);
+          const sorted = [...data].sort((a, b) => {
+            const orderA = a.sort_order && Number(a.sort_order) > 0 ? Number(a.sort_order) : 99999;
+            const orderB = b.sort_order && Number(b.sort_order) > 0 ? Number(b.sort_order) : 99999;
+            if (orderA !== orderB) {
+              return orderA - orderB;
+            }
+            return (a.name || '').localeCompare(b.name || '');
+          });
+          setCategories(sorted);
         }
       })
       .catch((err) => console.error('Error fetching dynamic categories:', err));
-  }, []);
+  }, [location.pathname]);
 
   const handleAccountClick = () => {
     if (user) {
