@@ -80,9 +80,9 @@ export default function ProductDetailPage() {
     if (!product || !product.variants) return [];
     const unique = [];
     const seen = new Set();
-    product.variants.forEach(v => {
-      if (v.color) {
-        const normalized = v.color.trim();
+    product.variants.forEach(variant => {
+      if (variant.color) {
+        const normalized = variant.color.trim();
         const lower = normalized.toLowerCase();
         if (!seen.has(lower)) {
           seen.add(lower);
@@ -96,29 +96,29 @@ export default function ProductDetailPage() {
   const specs = useMemo(() => {
     if (!product || !product.variants) return [];
     // Only display specs that are available for the currently selected color
-    const filtered = product.variants.filter(v => 
-      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
+    const filtered = product.variants.filter(variant => 
+      (variant.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
     );
     const targetVariants = filtered.length > 0 ? filtered : product.variants;
-    return [...new Set(targetVariants.map(v => getSpecString(v.ram, v.storage)).filter(Boolean))];
+    return [...new Set(targetVariants.map(variant => getSpecString(variant.ram, variant.storage)).filter(Boolean))];
   }, [product, selectedColor, getSpecString]);
 
   const selectedVariantIdx = useMemo(() => {
     if (!product || !product.variants || product.variants.length === 0) return null;
-    const idx = product.variants.findIndex(v => 
-      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
-      getSpecString(v.ram, v.storage) === selectedSpecs
+    const idx = product.variants.findIndex(variant => 
+      (variant.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
+      getSpecString(variant.ram, variant.storage) === selectedSpecs
     );
     return idx !== -1 ? idx : 0;
   }, [product, selectedColor, selectedSpecs, getSpecString]);
 
   const handleColorSelect = (col) => {
     setSelectedColor(col.trim());
-    const matchingVariant = product.variants.find(v => 
-      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase() && 
-      getSpecString(v.ram, v.storage) === selectedSpecs
-    ) || product.variants.find(v => 
-      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase()
+    const matchingVariant = product.variants.find(variant => 
+      (variant.color || '').trim().toLowerCase() === col.trim().toLowerCase() && 
+      getSpecString(variant.ram, variant.storage) === selectedSpecs
+    ) || product.variants.find(variant => 
+      (variant.color || '').trim().toLowerCase() === col.trim().toLowerCase()
     );
     if (matchingVariant) {
       setSelectedSpecs(getSpecString(matchingVariant.ram, matchingVariant.storage));
@@ -127,11 +127,11 @@ export default function ProductDetailPage() {
 
   const handleSpecsSelect = (sp) => {
     setSelectedSpecs(sp);
-    const matchingVariant = product.variants.find(v => 
-      getSpecString(v.ram, v.storage) === sp && 
-      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
-    ) || product.variants.find(v => 
-      getSpecString(v.ram, v.storage) === sp
+    const matchingVariant = product.variants.find(variant => 
+      getSpecString(variant.ram, variant.storage) === sp && 
+      (variant.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase()
+    ) || product.variants.find(variant => 
+      getSpecString(variant.ram, variant.storage) === sp
     );
     if (matchingVariant) {
       setSelectedColor((matchingVariant.color || '').trim());
@@ -263,24 +263,24 @@ export default function ProductDetailPage() {
 
   const isColorOutOfStock = (col) => {
     if (!product || !product.variants) return false;
-    const variantsForColor = product.variants.filter(v => 
-      (v.color || '').trim().toLowerCase() === col.trim().toLowerCase()
+    const variantsForColor = product.variants.filter(variant => 
+      (variant.color || '').trim().toLowerCase() === col.trim().toLowerCase()
     );
     if (variantsForColor.length === 0) return true;
-    return variantsForColor.every(v => {
-      const vStock = v.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+    return variantsForColor.every(variant => {
+      const vStock = variant.stock_quantity !== undefined ? parseInt(variant.stock_quantity, 10) : 0;
       return vStock <= 0;
     });
   };
 
   const isSpecOutOfStock = (sp) => {
     if (!product || !product.variants) return false;
-    const variant = product.variants.find(v => 
-      (v.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
-      getSpecString(v.ram, v.storage) === sp
+    const variant = product.variants.find(variantItem => 
+      (variantItem.color || '').trim().toLowerCase() === (selectedColor || '').trim().toLowerCase() && 
+      getSpecString(variantItem.ram, variantItem.storage) === sp
     );
     if (!variant) return true;
-    const vStock = variant.stock_quantity !== undefined ? parseInt(v.stock_quantity, 10) : 0;
+    const vStock = variant.stock_quantity !== undefined ? parseInt(variant.stock_quantity, 10) : 0;
     return vStock <= 0;
   };
 
