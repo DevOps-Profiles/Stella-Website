@@ -232,53 +232,56 @@ export default function App() {
                       {link.name}
                       <span className="absolute bottom-6 left-0 w-0 h-[2px] bg-stella-red transition-all duration-300 group-hover:w-full" />
                     </Link>
-                    {link.name === 'Products' && categories.length > 0 && (
-                      <div 
-                        className={`fixed top-20 left-0 w-full bg-black/90 backdrop-blur-2xl border-b border-white/10 overflow-hidden transition-all duration-300 shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50 ${showProductsDropdown ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'}`}
-                        style={{ backdropFilter: 'blur(20px)' }}
-                      >
-                        <div className="max-w-7xl mx-auto p-10">
-                          <h3 className="text-white font-black uppercase tracking-[0.3em] text-[10px] mb-8 border-b border-white/10 pb-4">Shop by Category</h3>
-                          <div className="grid grid-cols-4 lg:grid-cols-5 gap-x-10 gap-y-6">
-                            {categories.map((cat) => (
-                              <Link
-                                key={cat.id}
-                                to={`/products?category=${encodeURIComponent(cat.name)}`}
-                                onClick={() => setShowProductsDropdown(false)}
-                                className="group/cat flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-white/5"
-                              >
-                                {cat.image_url ? (
-                                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1 shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">
-                                    <img src={getImageUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-contain mix-blend-lighten" />
-                                  </div>
-                                ) : (
-                                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">
-                                    <div className="w-3.5 h-3.5 rounded-full bg-stella-gold/50" />
-                                  </div>
-                                )}
-                                <span className="block text-[9px] font-black text-gray-400 group-hover/cat:text-white uppercase tracking-widest transition-colors leading-tight">
-                                  {cat.name}
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
-                          
-                          <div className="mt-10 pt-6 border-t border-white/10 flex justify-between items-center">
-                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.2em]">Explore our complete catalog</p>
-                            <Link 
-                              to="/products"
-                              onClick={() => setShowProductsDropdown(false)}
-                              className="text-[9px] text-stella-gold font-black uppercase tracking-[0.3em] hover:text-white transition-colors flex items-center gap-2"
-                            >
-                              View All Products <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </nav>
+
+              {categories.length > 0 && (
+                <div 
+                  className={`fixed top-20 left-0 w-full bg-black/90 backdrop-blur-2xl border-b border-white/10 overflow-hidden transition-all duration-300 shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50 ${showProductsDropdown ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'}`}
+                  style={{ backdropFilter: 'blur(20px)' }}
+                  onMouseEnter={() => setShowProductsDropdown(true)}
+                  onMouseLeave={() => setShowProductsDropdown(false)}
+                >
+                  <div className="max-w-7xl mx-auto p-10">
+                    <h3 className="text-white font-black uppercase tracking-[0.3em] text-[10px] mb-8 border-b border-white/10 pb-4">Shop by Category</h3>
+                    <div className="grid grid-cols-4 lg:grid-cols-5 gap-x-10 gap-y-6">
+                      {categories.map((cat) => (
+                        <Link
+                          key={cat.id}
+                          to={`/products?category=${encodeURIComponent(cat.name)}`}
+                          onClick={() => setShowProductsDropdown(false)}
+                          className="group/cat flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-white/5"
+                        >
+                          {cat.image_url ? (
+                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1 shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">
+                              <img src={getImageUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-contain mix-blend-lighten" />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover/cat:border-stella-gold/40 transition-colors">
+                              <div className="w-3.5 h-3.5 rounded-full bg-stella-gold/50" />
+                            </div>
+                          )}
+                          <span className="block text-[9px] font-black text-gray-400 group-hover/cat:text-white uppercase tracking-widest transition-colors leading-tight">
+                            {cat.name}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-10 pt-6 border-t border-white/10 flex justify-between items-center">
+                      <p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.2em]">Explore our complete catalog</p>
+                      <Link 
+                        to="/products"
+                        onClick={() => setShowProductsDropdown(false)}
+                        className="text-[9px] text-stella-gold font-black uppercase tracking-[0.3em] hover:text-white transition-colors flex items-center gap-2"
+                      >
+                        View All Products <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </header>
 
