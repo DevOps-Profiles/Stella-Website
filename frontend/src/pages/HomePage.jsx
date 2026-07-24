@@ -713,22 +713,24 @@ export default function HomePage() {
               <div className="absolute bottom-[20%] left-[-10%] w-[600px] h-[600px] bg-stella-red/10 rounded-full blur-[150px] pointer-events-none" />
 
               {/* Sticky Header */}
-              <div className="shrink-0 bg-stella-black/90 backdrop-blur-md border-b border-white/[0.05] px-6 md:px-16 py-6 md:py-8 flex items-center justify-between z-20 w-full">
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white">Franchise Program</h2>
-                  <p className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-[0.4em] mt-1">Stella Partnership Programme</p>
+              <div className="shrink-0 bg-stella-black/90 backdrop-blur-md border-b border-white/[0.05] px-4 sm:px-6 md:px-16 py-4 sm:py-6 md:py-8 flex items-center justify-between gap-2 sm:gap-4 z-20 w-full">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base sm:text-2xl md:text-3xl font-black uppercase tracking-tighter text-white leading-tight">Franchise Program</h2>
+                  <p className="text-[7px] sm:text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] sm:tracking-[0.4em] mt-0.5 sm:mt-1 whitespace-normal break-words leading-snug">Stella Partnership Programme</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  {/* Brochure Download */}
-                  <div className="hidden sm:flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                  {/* Brochure Download — top only, same as web */}
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="text-right">
-                      <p className="text-white font-black uppercase tracking-wider text-[11px]">Franchise Brochure</p>
-                      <p className="text-gray-400 text-[8px] mt-0.5 leading-tight uppercase tracking-wider">Business model & investment guide</p>
+                      <p className="text-white font-black uppercase tracking-wider text-[9px] sm:text-[11px]">Franchise Brochure</p>
+                      <p className="text-gray-400 text-[7px] sm:text-[8px] mt-0.5 leading-tight uppercase tracking-wider max-w-[6.5rem] sm:max-w-none">Business model & investment guide</p>
                     </div>
                     <a
                       href={homepageConfig.franchise?.brochureUrl || "/Business_Brochure.pdf"}
                       download="Business_Brochure"
-                      className="w-10 h-10 rounded-full bg-stella-red/10 border border-stella-red/20 text-stella-red flex items-center justify-center hover:bg-stella-red hover:text-white transition-all duration-300 shadow-lg shadow-stella-red/0 hover:shadow-stella-red/30 cursor-pointer"
+                      aria-label="Download Franchise Brochure"
+                      title="Download Franchise Brochure"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-stella-red/10 border border-stella-red/20 text-stella-red flex items-center justify-center hover:bg-stella-red hover:text-white transition-all duration-300 shadow-lg cursor-pointer shrink-0"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -738,7 +740,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setShowFranchiseModal(false)}
-                    className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all text-xl font-black cursor-pointer"
+                    className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all text-lg sm:text-xl font-black cursor-pointer shrink-0"
                   >
                     ✕
                   </button>
