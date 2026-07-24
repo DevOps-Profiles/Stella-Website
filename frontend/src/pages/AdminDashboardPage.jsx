@@ -1444,7 +1444,7 @@ export default function AdminDashboardPage() {
                         const currentVariants = productForm.variants || [];
                         setProductForm({
                           ...productForm,
-                          variants: [...currentVariants, { color: '', ram: '', storage: '', price: productForm.price || '', stock_quantity: productForm.stock_quantity || 10 }]
+                          variants: [...currentVariants, { color: '', ram: '', storage: '', price: productForm.price || '', stock_quantity: '' }]
                         });
                       }}
                       className="text-white text-[8px] font-black uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 hover:border-stella-gold transition-colors"

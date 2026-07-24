@@ -605,18 +605,15 @@ export default function ProductListPage() {
                 ))}
               </div>
             ) : (
-              <Reveal3D
-                tag="div"
-                variant="up"
-                stagger={50}
+              <div
+                key={`grid-${categoryName}-${sortBy}-${filteredProducts.length}-${filteredProducts[0]?.id || 0}`}
                 className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-5"
-                refreshKey={`products-${sortBy}-${filteredProducts.length}`}
               >
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product, idx) => (
                   <div
-                    data-reveal-child
                     key={product.id}
-                    className="group flex flex-col bg-[#0c0c0f] border border-white/[0.05] rounded-2xl overflow-hidden cursor-pointer hover:border-white/15 hover:shadow-[0_20px_60px_rgba(0,0,0,0.7)] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                    className="group flex flex-col bg-[#0c0c0f] border border-white/[0.05] rounded-2xl overflow-hidden cursor-pointer hover:border-white/15 hover:shadow-[0_20px_60px_rgba(0,0,0,0.7)] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] animate-fast-fade-in"
+                    style={{ animationDelay: `${Math.min(idx * 20, 100)}ms` }}
                   >
                     <article
                       onClick={() => goToDetail(product.id)}
@@ -689,7 +686,7 @@ export default function ProductListPage() {
                     </button>
                   </div>
                 )}
-              </Reveal3D>
+              </div>
             )}
           </div>
 
@@ -716,6 +713,13 @@ export default function ProductListPage() {
         @keyframes fadeOverlay {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        .animate-fast-fade-in {
+          animation: fastFadeIn 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes fastFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes fadeInScale {
           from {
