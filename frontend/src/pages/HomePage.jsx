@@ -497,11 +497,11 @@ export default function HomePage() {
         <div className="w-full max-w-7xl mx-auto grid grid-cols-1 grid-rows-[auto_auto] md:grid-cols-10 md:grid-rows-1 gap-4 md:gap-6 items-stretch min-w-0">
 
           {/* Clip shell (no transform) so tilt/float/titles can't widen the page */}
-          <div className="md:col-span-8 relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.5rem]">
+          <div className="md:col-span-8 relative min-w-0 w-full max-w-full">
             <TiltCard
               maxTilt={2}
               scale={1}
-              className={`animate-float-up-card relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_15px_40px_rgba(0,0,0,0.25)] group flex flex-col w-full min-w-0 max-w-full aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/8] ${isSlideTransitioning ? '[animation-play-state:paused]' : ''} ${(currentSlideData?.categoryId || currentSlideData?.isFranchise) ? 'cursor-pointer' : ''}`}
+              className={`animate-float-up-card relative rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_15px_40px_rgba(0,0,0,0.25)] group flex flex-col w-full min-w-0 max-w-full p-1.5 sm:p-2 md:p-0 ${isSlideTransitioning ? '[animation-play-state:paused]' : ''} ${(currentSlideData?.categoryId || currentSlideData?.isFranchise) ? 'cursor-pointer' : ''}`}
               onClick={() => {
                 if (currentSlideData?.isFranchise) {
                   setShowFranchiseModal(true);
@@ -510,76 +510,89 @@ export default function HomePage() {
                 }
               }}
             >
-              <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0d0d12] to-[#050508]" />
-              {/* Images fit fully inside the card (contain) + fade/scale transition */}
-              <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
-                {(activeConfig?.hero?.slides || []).map((slide, idx) => {
-                  const active = idx === currentSlide;
-                  return (
-                    <div
-                      key={slide.id ?? idx}
-                      className={`absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-0 transition-all duration-700 ease-in-out ${
-                        active ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-105 pointer-events-none'
-                      }`}
-                    >
-                      <img
-                        src={getImageUrl(slide.image)}
-                        alt={slide.title || 'Stella'}
-                        loading={idx === 0 ? 'eager' : 'lazy'}
-                        decoding="async"
-                        sizes="(max-width: 768px) 100vw, 80vw"
-                        className={`block h-full w-full max-h-full max-w-full object-contain object-center ${
-                          active ? 'md:animate-hero-pan' : ''
-                        } ${active ? 'md:opacity-90 md:mix-blend-screen' : ''}`}
-                      />
-                    </div>
-                  );
-                })}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#050508]/80 via-transparent to-transparent z-20 pointer-events-none" />
-              </div>
+              {/* Inner frame — height follows the active image so the full image stays visible */}
+              <div className="relative w-full overflow-hidden rounded-xl md:rounded-[2.5rem] bg-[#050508]">
+                {currentSlideData?.image ? (
+                  <img
+                    src={getImageUrl(currentSlideData.image)}
+                    alt=""
+                    aria-hidden
+                    decoding="async"
+                    className="block w-full h-auto opacity-0 pointer-events-none select-none"
+                  />
+                ) : (
+                  <div className="w-full aspect-[16/10]" />
+                )}
 
-              {/* Title + subtitle stacked at bottom — fully visible, no overlap clip */}
-              <div className="absolute inset-x-0 bottom-0 z-30 pointer-events-none">
-                {(activeConfig?.hero?.slides || []).map((slide, idx) => {
-                  const active = idx === currentSlide && !slide.isFranchise;
-                  const words = slide.title ? String(slide.title).trim().split(/\s+/) : [];
-                  const hasTitle = words.length > 0;
-                  const hasSubtitle = Boolean(slide.subtitle);
-                  if (!hasTitle && !hasSubtitle) return null;
-                  return (
-                    <div
-                      key={`overlay-${slide.id ?? idx}`}
-                      className={`absolute inset-x-0 bottom-0 px-4 pt-16 pb-4 sm:px-6 sm:pb-5 md:px-10 md:pb-8 transition-opacity duration-700 ease-in-out ${
-                        active ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                      }`}
-                      aria-hidden={!active}
-                    >
-                      <div className="flex flex-col items-start gap-2.5 sm:gap-3 max-w-full">
-                        {hasTitle && (
-                          <h1
-                            className={`font-black uppercase tracking-tighter text-white leading-[0.95] text-left drop-shadow-2xl max-w-full line-clamp-3 max-md:!text-2xl sm:max-md:!text-4xl ${
-                              slide.titleSize || 'text-2xl sm:text-4xl md:text-[clamp(1.75rem,4.5vw,4.5rem)]'
-                            }`}
-                          >
-                            {words.slice(0, -1).join(' ')}
-                            {words.length > 1 ? ' ' : null}
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
-                              {words[words.length - 1]}
-                            </span>
-                          </h1>
-                        )}
-                        {hasSubtitle && (
-                          <span className="inline-flex max-w-full items-start gap-2.5 bg-black/45 backdrop-blur-xl px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-white/10 shadow-2xl">
-                            <span className="mt-1.5 w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
-                            <span className={`text-white font-black uppercase tracking-[0.15em] leading-snug whitespace-normal break-words ${slide.subtitleSize || 'text-[9px] sm:text-[10px] md:text-xs'}`}>
-                              {slide.subtitle}
-                            </span>
-                          </span>
-                        )}
+                <div className="absolute inset-0 z-0">
+                  {(activeConfig?.hero?.slides || []).map((slide, idx) => {
+                    const active = idx === currentSlide;
+                    return (
+                      <div
+                        key={slide.id ?? idx}
+                        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-in-out ${
+                          active ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                        }`}
+                      >
+                        <img
+                          src={getImageUrl(slide.image)}
+                          alt={slide.title || 'Stella'}
+                          loading={idx === 0 ? 'eager' : 'lazy'}
+                          decoding="async"
+                          sizes="(max-width: 768px) 100vw, 80vw"
+                          className={`block h-full w-full object-contain object-center ${
+                            active ? 'md:animate-hero-pan md:opacity-90 md:mix-blend-screen' : ''
+                          }`}
+                        />
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                  <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                </div>
+
+                {/* Title + subtitle over the image */}
+                <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-end">
+                  {(activeConfig?.hero?.slides || []).map((slide, idx) => {
+                    const active = idx === currentSlide && !slide.isFranchise;
+                    const words = slide.title ? String(slide.title).trim().split(/\s+/) : [];
+                    const hasTitle = words.length > 0;
+                    const hasSubtitle = Boolean(slide.subtitle);
+                    if (!hasTitle && !hasSubtitle) return null;
+                    return (
+                      <div
+                        key={`overlay-${slide.id ?? idx}`}
+                        className={`absolute inset-x-0 bottom-0 px-3 pb-3 pt-16 sm:px-5 sm:pb-4 md:px-10 md:pb-8 transition-opacity duration-700 ease-in-out ${
+                          active ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                        }`}
+                        aria-hidden={!active}
+                      >
+                        <div className="flex flex-col items-start gap-2 sm:gap-3 max-w-full">
+                          {hasTitle && (
+                            <h1
+                              className={`font-black uppercase tracking-tighter text-white leading-[0.95] text-left drop-shadow-2xl max-w-full line-clamp-3 max-md:!text-2xl sm:max-md:!text-4xl ${
+                                slide.titleSize || 'text-2xl sm:text-4xl md:text-[clamp(1.75rem,4.5vw,4.5rem)]'
+                              }`}
+                            >
+                              {words.slice(0, -1).join(' ')}
+                              {words.length > 1 ? ' ' : null}
+                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
+                                {words[words.length - 1]}
+                              </span>
+                            </h1>
+                          )}
+                          {hasSubtitle && (
+                            <span className="inline-flex max-w-full items-start gap-2.5 bg-black/50 backdrop-blur-xl px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-white/10 shadow-2xl">
+                              <span className="mt-1.5 w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
+                              <span className={`text-white font-black uppercase tracking-[0.15em] leading-snug whitespace-normal break-words ${slide.subtitleSize || 'text-[9px] sm:text-[10px] md:text-xs'}`}>
+                                {slide.subtitle}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </TiltCard>
           </div>
@@ -589,25 +602,25 @@ export default function HomePage() {
             <TiltCard
               maxTilt={6}
               scale={1}
-              className="animate-float-down-card relative rounded-full md:rounded-[2.5rem] overflow-hidden bg-[#0d0d12] border border-stella-red/50 shadow-[0_0_40px_rgba(230,57,70,0.2)] group flex flex-col items-center justify-center p-4 md:p-6 cursor-pointer md:hover:scale-105 transition-all md:h-full w-full min-w-0 max-w-full"
+              className="animate-float-down-card relative rounded-full md:rounded-[2.5rem] overflow-hidden bg-[#0d0d12] border border-stella-red/50 shadow-[0_0_40px_rgba(230,57,70,0.2)] group flex flex-col items-center justify-center px-3 py-2.5 md:p-6 cursor-pointer md:hover:scale-105 transition-all md:h-full w-full min-w-0 max-w-full"
               onClick={() => setIsStoreLocatorOpen(true)}
             >
               <div className="absolute inset-0 bg-gradient-to-b md:from-stella-red/5 md:to-transparent from-stella-red/10 to-stella-red/5 opacity-100 transition-opacity duration-500" />
-              <div className="relative z-10 flex flex-row md:flex-col items-center justify-between md:justify-center gap-4 md:gap-6 w-full">
-                <div className="flex items-center md:flex-col gap-4 md:gap-6">
-                  <div className="relative">
+              <div className="relative z-10 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2.5 md:gap-6 w-full">
+                <div className="flex items-center md:flex-col gap-2.5 md:gap-6 min-w-0">
+                  <div className="relative shrink-0">
                     <div className="absolute inset-0 bg-stella-red rounded-full animate-ping opacity-30 transition-opacity" />
-                    <div className="bg-stella-red/20 p-3 md:p-5 rounded-full backdrop-blur-md border border-stella-red/40 transition-colors">
-                      <MapPinIcon className="w-5 h-5 md:w-8 md:h-8 text-stella-red drop-shadow-lg relative z-10 transition-colors" />
+                    <div className="bg-stella-red/20 p-2 md:p-5 rounded-full backdrop-blur-md border border-stella-red/40 transition-colors">
+                      <MapPinIcon className="w-4 h-4 md:w-8 md:h-8 text-stella-red drop-shadow-lg relative z-10 transition-colors" />
                     </div>
                   </div>
-                  <span className="text-stella-red font-black uppercase tracking-[0.15em] text-sm md:text-lg text-left md:text-center drop-shadow-sm leading-tight mt-0 md:mt-2 transition-colors">
+                  <span className="text-stella-red font-black uppercase tracking-[0.12em] text-[11px] md:text-lg text-left md:text-center drop-shadow-sm leading-tight mt-0 md:mt-2 transition-colors truncate">
                     Store <span className="md:hidden">Locator</span><br className="hidden md:block" /> <span className="hidden md:inline">Locator</span>
                   </span>
                 </div>
 
-                <div className="px-5 py-3 md:px-4 md:py-2 rounded-full bg-stella-red text-white text-[10px] font-bold uppercase tracking-widest border border-stella-red flex items-center gap-1 shadow-[0_0_15px_rgba(230,57,70,0.5)] transition-colors shrink-0">
-                  Find Us <ChevronRightIcon size={12} />
+                <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-stella-red text-white text-[8px] md:text-[10px] font-bold uppercase tracking-widest border border-stella-red flex items-center gap-0.5 md:gap-1 shadow-[0_0_15px_rgba(230,57,70,0.5)] transition-colors shrink-0">
+                  Find Us <ChevronRightIcon className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 </div>
               </div>
             </TiltCard>

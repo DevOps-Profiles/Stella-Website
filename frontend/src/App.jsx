@@ -335,98 +335,104 @@ export default function App() {
           document.body
         )}
 
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 z-[120] bg-stella-black/80 backdrop-blur-md md:hidden animate-fade-in"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-
-        {isMobileMenuOpen && (
-          <div className="fixed inset-y-0 right-0 z-[130] w-[80%] max-w-sm bg-[#0d0d10] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] md:hidden flex flex-col animate-curtain-reveal">
-            <div className="flex justify-between items-center p-6 border-b border-white/5">
-              <div className="flex items-center space-x-3 cursor-pointer" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setIsMobileMenuOpen(false); }}>
-                <CleanLogo className="h-10 w-10 object-contain rounded-full" height={40} />
-                <div className="flex flex-col items-center justify-center">
-                  <OldCleanLogo className="h-16 object-contain" height={64} />
+        {isMobileMenuOpen && createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[200] bg-stella-black/80 backdrop-blur-md md:hidden animate-fade-in"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <div className="fixed inset-y-0 right-0 z-[210] w-[80%] max-w-sm bg-[#0d0d10] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] md:hidden flex flex-col animate-curtain-reveal pt-[env(safe-area-inset-top)]">
+              <div className="flex justify-between items-center gap-3 px-5 py-4 border-b border-white/5 shrink-0">
+                <div
+                  className="flex items-center gap-2 min-w-0 cursor-pointer"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <CleanLogo className="h-9 w-9 object-contain rounded-full shrink-0" height={36} />
+                  <OldCleanLogo className="h-9 w-[120px] object-contain object-left shrink-0" height={36} />
                 </div>
-              </div>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 border border-white/10 hover:text-white transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <Reveal3D tag="div" variant="right" stagger={60} className="flex-1 overflow-y-auto px-6 py-8 space-y-3 custom-scrollbar" refreshKey="mobile-menu">
-              {navLinks.filter(l => l.name !== 'Home').map((link) => (
-                <div key={link.name} data-reveal-child>
-                  <Link
-                    to={link.name === 'Products' ? '#' : getNavLinkPath(link.name)}
-                    onClick={(e) => {
-                      if (link.name === 'Products') {
-                        e.preventDefault();
-                        setShowMobileProductsDropdown(!showMobileProductsDropdown);
-                      } else {
-                        handleNavClick(e, link.path);
-                        setIsMobileMenuOpen(false);
-                      }
-                    }}
-                    className="flex items-center space-x-4 text-sm font-black uppercase tracking-widest text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] hover:border-stella-red/50 px-5 py-4 rounded-xl transition-all duration-300 hover:translate-x-2 group"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-stella-red group-hover:shadow-[0_0_10px_rgba(229,9,20,0.8)] transition-shadow" />
-                    <span className="group-hover:text-glow-red transition-all duration-300 flex-1">{link.name}</span>
-                    {link.name === 'Products' && (
-                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${showMobileProductsDropdown ? 'rotate-180 text-stella-red' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </Link>
-                  {link.name === 'Products' && categories.length > 0 && (
-                    <div className={`ml-8 mt-2 space-y-2 border-l border-white/10 pl-4 overflow-hidden transition-all duration-300 ${showMobileProductsDropdown ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 border-transparent mt-0'}`}>
-                      {categories.map((cat) => (
-                        <Link
-                          key={cat.id}
-                          to={`/products?category=${encodeURIComponent(cat.name)}`}
-                          onClick={() => {
-                            setIsMobileMenuOpen(false);
-                            setShowMobileProductsDropdown(false);
-                          }}
-                          className="block text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white py-2"
-                        >
-                          {cat.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <div data-reveal-child>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setShowCart(true);
-                  }}
-                  className="w-full flex items-center space-x-4 text-sm font-black uppercase tracking-widest text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] hover:border-stella-red/50 px-5 py-4 rounded-xl transition-all duration-300 hover:translate-x-2 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-10 h-10 shrink-0 rounded-full bg-white/5 flex items-center justify-center text-gray-400 border border-white/10 hover:text-white transition-colors"
+                  aria-label="Close menu"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-stella-gold group-hover:shadow-[0_0_10px_rgba(245,158,11,0.8)] transition-shadow" />
-                  <span className="flex-1 text-left">Cart</span>
-                  {totalItems > 0 && (
-                    <span className="min-w-5 h-5 px-1.5 bg-stella-red text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-            </Reveal3D>
-          </div>
+              <Reveal3D tag="div" variant="right" stagger={60} className="flex-1 overflow-y-auto px-6 py-8 space-y-3 custom-scrollbar" refreshKey="mobile-menu">
+                {navLinks.filter(l => l.name !== 'Home').map((link) => (
+                  <div key={link.name} data-reveal-child>
+                    <Link
+                      to={link.name === 'Products' ? '#' : getNavLinkPath(link.name)}
+                      onClick={(e) => {
+                        if (link.name === 'Products') {
+                          e.preventDefault();
+                          setShowMobileProductsDropdown(!showMobileProductsDropdown);
+                        } else {
+                          handleNavClick(e, link.path);
+                          setIsMobileMenuOpen(false);
+                        }
+                      }}
+                      className="flex items-center space-x-4 text-sm font-black uppercase tracking-widest text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] hover:border-stella-red/50 px-5 py-4 rounded-xl transition-all duration-300 hover:translate-x-2 group"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-stella-red group-hover:shadow-[0_0_10px_rgba(229,9,20,0.8)] transition-shadow" />
+                      <span className="group-hover:text-glow-red transition-all duration-300 flex-1">{link.name}</span>
+                      {link.name === 'Products' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-300 ${showMobileProductsDropdown ? 'rotate-180 text-stella-red' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
+                    </Link>
+                    {link.name === 'Products' && categories.length > 0 && (
+                      <div className={`ml-8 mt-2 space-y-2 border-l border-white/10 pl-4 overflow-hidden transition-all duration-300 ${showMobileProductsDropdown ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 border-transparent mt-0'}`}>
+                        {categories.map((cat) => (
+                          <Link
+                            key={cat.id}
+                            to={`/products?category=${encodeURIComponent(cat.name)}`}
+                            onClick={() => {
+                              setIsMobileMenuOpen(false);
+                              setShowMobileProductsDropdown(false);
+                            }}
+                            className="block text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white py-2"
+                          >
+                            {cat.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <div data-reveal-child>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setShowCart(true);
+                    }}
+                    className="w-full flex items-center space-x-4 text-sm font-black uppercase tracking-widest text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] hover:border-stella-red/50 px-5 py-4 rounded-xl transition-all duration-300 hover:translate-x-2 group"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-stella-gold group-hover:shadow-[0_0_10px_rgba(245,158,11,0.8)] transition-shadow" />
+                    <span className="flex-1 text-left">Cart</span>
+                    {totalItems > 0 && (
+                      <span className="min-w-5 h-5 px-1.5 bg-stella-red text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                        {totalItems}
+                      </span>
+                    )}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </button>
+                </div>
+              </Reveal3D>
+            </div>
+          </>,
+          document.body
         )}
 
         <main className={hideNav ? '' : 'pt-20'}>
