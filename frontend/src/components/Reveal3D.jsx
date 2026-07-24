@@ -8,6 +8,16 @@ const VARIANTS = {
   flip:  'reveal-3d--flip',
 };
 
+/** True when any meaningful part of the element is on screen */
+function isEnteringView(rect) {
+  const vh = window.innerHeight || 0;
+  if (!vh) return false;
+  return rect.bottom > 48 && rect.top < vh - 24;
+}
+
+/**
+ * Scroll reveal: show on scroll-down into view, hide on scroll-up / leave.
+ */
 export default function Reveal3D({
   as: Tag = 'div',
   children,
@@ -26,6 +36,8 @@ export default function Reveal3D({
     const root = ref.current;
     if (!root) return;
 
+    setVisible(false);
+
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setVisible(true);
       return;
@@ -33,17 +45,16 @@ export default function Reveal3D({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Fires both on enter AND exit → re-hides when scrolled past
+        // Enter → visible, leave → hide (replays next time you scroll to it)
         setVisible(entry.isIntersecting);
       },
-      { threshold: 0.1, rootMargin: '0px 0px -6% 0px' },
+      { threshold: 0.12, rootMargin: '0px 0px -10% 0px' },
     );
 
     observer.observe(root);
 
-    // Already in view on mount
-    const rect = root.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.92 && rect.bottom > 0) {
+    // First row / above-fold content should start visible
+    if (isEnteringView(root.getBoundingClientRect())) {
       setVisible(true);
     }
 
@@ -55,6 +66,7 @@ export default function Reveal3D({
     '--reveal-delay': `${delay}ms`,
     '--reveal-duration': `${duration}ms`,
     '--reveal-stagger': `${Math.round(stagger)}ms`,
+    overflowAnchor: 'none',
   };
 
   const classes = [

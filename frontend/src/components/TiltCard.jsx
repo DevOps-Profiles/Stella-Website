@@ -1,7 +1,7 @@
 import { useTilt } from '@/hooks/useTilt';
 
-export default function TiltCard({ children, className = '', maxTilt = 10, ...rest }) {
-  const { ref, glareRef, onPointerMove, onPointerLeave } = useTilt({ maxTilt, scale: 1.04 });
+export default function TiltCard({ children, className = '', maxTilt = 10, scale = 1.02, ...rest }) {
+  const { ref, glareRef, onPointerMove, onPointerLeave } = useTilt({ maxTilt, scale });
 
   return (
     <div
@@ -11,12 +11,11 @@ export default function TiltCard({ children, className = '', maxTilt = 10, ...re
       onPointerLeave={onPointerLeave}
       onPointerUp={onPointerLeave}
       onPointerCancel={onPointerLeave}
-      className={`relative overflow-hidden ${className}`}
-      style={{ transformStyle: 'preserve-3d', willChange: 'transform' }}
+      className={`relative overflow-hidden min-w-0 max-w-full ${className}`}
+      style={{ transformStyle: 'preserve-3d', willChange: 'transform', contain: 'paint' }}
       {...rest}
     >
       {children}
-      {/* Specular glare */}
       <div
         ref={glareRef}
         className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"

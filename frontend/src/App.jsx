@@ -1,4 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE as API, getImageUrl } from './lib/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -191,25 +192,26 @@ export default function App() {
       <div className="relative z-10 w-full">
         <ScrollManager />
 
-        {!hideNav && (
-          <header className="glass-dark fixed top-0 left-0 right-0 z-[60] border-b border-white/5 px-6 h-16 md:h-20">
-            <div className="max-w-7xl mx-auto flex justify-between items-center h-full">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                  <CleanLogo
-                    className="h-14 w-14 md:h-16 md:w-16 object-contain hover:scale-105 transition-transform duration-500 rounded-full"
-                    height={64}
-                  />
-                  <div className="flex flex-col items-center justify-center -translate-y-2 md:-translate-y-3">
-                    <OldCleanLogo
-                      className="h-20 md:h-32 object-contain hover:scale-105 transition-transform duration-500"
-                      height={108}
-                    />
-                  </div>
-                </div>
+        {!hideNav && createPortal(
+          <>
+          <header
+            className="site-header fixed top-0 left-0 right-0 z-[100] border-b border-white/5 px-4 sm:px-6 h-[4.5rem] md:h-20 bg-[#0a0a0c]"
+            style={{ transform: 'translate3d(0,0,0)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+          >
+            <div className="relative max-w-7xl mx-auto h-full flex items-center pr-[7rem] md:pr-40">
+              <div
+                className="flex items-center gap-2 md:gap-3 cursor-pointer shrink-0 min-w-0"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              >
+                <CleanLogo
+                  className="h-11 w-11 md:h-14 md:w-14 object-contain rounded-full shrink-0"
+                />
+                <OldCleanLogo
+                  className="h-11 w-[140px] md:h-14 md:w-[200px] object-contain object-left shrink-0"
+                />
               </div>
 
-              <nav className="hidden md:flex items-center space-x-10">
+              <nav className="hidden md:flex items-center space-x-10 absolute left-1/2 -translate-x-1/2">
                 {navLinks.map((link) => (
                   <div 
                     key={link.name} 
@@ -277,16 +279,20 @@ export default function App() {
                   </div>
                 ))}
               </nav>
+            </div>
+          </header>
 
-              <div className="flex items-center gap-1.5 sm:gap-3 md:gap-6">
-                {/* Home Icon */}
-                <Link to="/" className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-stella-gray border border-white/5 text-gray-400 group-hover:border-stella-red/50 hover:text-white transition-colors">
+          {/* Icons in their own fixed opaque tray — solid bg so hero fade can't composite through them */}
+          <div
+            className="fixed top-0 right-0 z-[110] h-[4.5rem] md:h-20 flex items-center gap-1.5 sm:gap-3 md:gap-6 px-4 sm:px-6 bg-[#0a0a0c] pointer-events-auto"
+            style={{ transform: 'translate3d(0,0,0)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+          >
+                <Link to="/" className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-stella-gray border border-white/5 text-gray-400 hover:text-white transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
                 </Link>
 
-                {/* Profile Icon */}
                 <button onClick={handleAccountClick} className="group flex items-center gap-2">
                   <div className="w-9 h-9 shrink-0 rounded-full bg-stella-gray border border-white/5 flex items-center justify-center group-hover:border-stella-red/50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -300,21 +306,19 @@ export default function App() {
                   )}
                 </button>
 
-                {/* Cart Icon */}
-                <button onClick={() => setShowCart(true)} className="group relative flex items-center justify-center w-9 h-9 shrink-0">
+                <button onClick={() => setShowCart(true)} className="hidden md:flex group relative items-center justify-center w-9 h-9 shrink-0">
                   <div className="w-full h-full rounded-full bg-stella-gray border border-white/5 flex items-center justify-center group-hover:border-stella-red/50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   </div>
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-stella-red text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-stella-black animate-pulse">
+                    <span className="absolute -top-1 -right-1 bg-stella-red text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-stella-black">
                       {totalItems}
                     </span>
                   )}
                 </button>
 
-                {/* Hamburger Icon */}
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
                   className="md:hidden w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-stella-gray border border-white/5 text-gray-400"
@@ -323,25 +327,25 @@ export default function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-              </div>
-            </div>
-          </header>
+          </div>
+          </>,
+          document.body
         )}
 
         {isMobileMenuOpen && (
           <div
-            className="fixed inset-0 z-[60] bg-stella-black/80 backdrop-blur-md md:hidden animate-fade-in"
+            className="fixed inset-0 z-[120] bg-stella-black/80 backdrop-blur-md md:hidden animate-fade-in"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
 
         {isMobileMenuOpen && (
-          <div className="fixed inset-y-0 right-0 z-[70] w-[80%] max-w-sm bg-[#0d0d10] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] md:hidden flex flex-col animate-curtain-reveal">
+          <div className="fixed inset-y-0 right-0 z-[130] w-[80%] max-w-sm bg-[#0d0d10] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] md:hidden flex flex-col animate-curtain-reveal">
             <div className="flex justify-between items-center p-6 border-b border-white/5">
-              <div className="flex items-center space-x-3 mb-6 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="flex items-center space-x-3 cursor-pointer" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setIsMobileMenuOpen(false); }}>
                 <CleanLogo className="h-10 w-10 object-contain rounded-full" height={40} />
                 <div className="flex flex-col items-center justify-center">
-                  <OldCleanLogo className="h-16 md:h-20 object-contain" height={64} />
+                  <OldCleanLogo className="h-16 object-contain" height={64} />
                 </div>
               </div>
               <button
@@ -396,6 +400,28 @@ export default function App() {
                   )}
                 </div>
               ))}
+
+              <div data-reveal-child>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setShowCart(true);
+                  }}
+                  className="w-full flex items-center space-x-4 text-sm font-black uppercase tracking-widest text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] hover:border-stella-red/50 px-5 py-4 rounded-xl transition-all duration-300 hover:translate-x-2 group"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-stella-gold group-hover:shadow-[0_0_10px_rgba(245,158,11,0.8)] transition-shadow" />
+                  <span className="flex-1 text-left">Cart</span>
+                  {totalItems > 0 && (
+                    <span className="min-w-5 h-5 px-1.5 bg-stella-red text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </button>
+              </div>
             </Reveal3D>
           </div>
         )}

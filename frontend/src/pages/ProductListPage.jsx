@@ -271,9 +271,10 @@ export default function ProductListPage() {
 
   return (
     <div className="min-h-screen pb-32 bg-transparent text-white relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-8">
+      {/* Top block: hero + tools — keep within ~half mobile viewport */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-3 md:pt-8 max-md:max-h-[50dvh] max-md:flex max-md:flex-col max-md:justify-start">
         <div
-          className="relative h-[42vh] flex items-end pb-12 px-8 overflow-hidden rounded-3xl border border-white/[0.08] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] bg-stella-black animate-3d-tilt"
+          className="relative h-[16vh] min-h-[96px] max-h-[120px] md:h-[42vh] md:min-h-0 md:max-h-none flex items-end pb-4 md:pb-12 px-4 md:px-8 overflow-hidden rounded-2xl md:rounded-3xl border border-white/[0.08] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] bg-stella-black animate-3d-tilt shrink-0"
         >
           <div className="absolute inset-0 z-0">
             <div
@@ -285,7 +286,7 @@ export default function ProductListPage() {
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
             <span
-              className="text-[12vw] font-extralight uppercase tracking-[0.25em] text-white/[0.015] whitespace-nowrap leading-none transition-all select-none"
+              className="text-[10vw] md:text-[12vw] font-extralight uppercase tracking-[0.25em] text-white/[0.015] whitespace-nowrap leading-none transition-all select-none"
               style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d' }}
             >
               {categoryName || 'STELLA'}
@@ -296,18 +297,17 @@ export default function ProductListPage() {
             className="max-w-7xl mx-auto w-full relative z-10"
             style={{ transform: 'translateZ(60px)', transformStyle: 'preserve-3d' }}
           >
-            <h1 className="text-5xl md:text-7xl font-bold uppercase tracking-tight text-white font-display mb-2">
+            <h1 className="text-2xl sm:text-4xl md:text-7xl font-bold uppercase tracking-tight text-white font-display mb-0 md:mb-2">
               {categoryName || 'The'}{' '}
               <span className="font-extralight text-white/50">Collection.</span>
             </h1>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-8 mt-16 relative z-10">
-        <div className="flex flex-col gap-6">
+        <div className="mt-3 md:mt-10 relative z-10 shrink-0">
+        <div className="flex flex-col gap-2.5 md:gap-6">
           <div
-            className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-4 animate-fade-up"
+            className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 md:gap-6 pt-0 md:pt-4 animate-fade-up"
             style={{ animationDelay: '0.1s' }}
           >
             <div className="relative w-full sm:w-96">
@@ -316,27 +316,27 @@ export default function ProductListPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search collection..."
-                className="bg-stella-charcoal/30 border border-white/[0.08] text-white rounded-2xl py-4 px-6 focus:border-stella-red/50 focus:bg-stella-black/80 focus:shadow-[0_0_20px_rgba(230,57,70,0.1)] outline-none text-xs font-bold uppercase tracking-wider w-full transition-all"
+                className="bg-stella-charcoal/30 border border-white/[0.08] text-white rounded-xl md:rounded-2xl py-2.5 md:py-4 px-4 md:px-6 focus:border-stella-red/50 focus:bg-stella-black/80 focus:shadow-[0_0_20px_rgba(230,57,70,0.1)] outline-none text-[10px] md:text-xs font-bold uppercase tracking-wider w-full transition-all"
               />
             </div>
 
-            <div className="relative flex items-center space-x-4 w-full sm:w-auto">
-              <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] whitespace-nowrap">
+            <div className="relative flex items-center gap-2 md:space-x-4 w-full sm:w-auto">
+              <span className="text-[9px] md:text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] whitespace-nowrap">
                 Sort by:
               </span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-stella-charcoal/30 border border-white/[0.08] text-white rounded-2xl py-4 px-6 focus:border-white/20 focus:bg-stella-black/80 outline-none text-[10px] font-black uppercase tracking-[0.15em] cursor-pointer w-full sm:w-auto transition-all appearance-none pr-10 relative"
+                className="bg-stella-charcoal/30 border border-white/[0.08] text-white rounded-xl md:rounded-2xl py-2.5 md:py-4 px-4 md:px-6 focus:border-white/20 focus:bg-stella-black/80 outline-none text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] cursor-pointer w-full sm:w-auto transition-all appearance-none pr-9 md:pr-10 relative"
               >
                 <option value="Newest First">Newest First</option>
                 <option value="Price: Low-High">Price: Low-High</option>
                 <option value="Price: High-Low">Price: High-Low</option>
               </select>
-              <div className="absolute right-[4.5rem] pointer-events-none">
+              <div className="absolute right-3 md:right-[4.5rem] pointer-events-none">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-gray-400"
+                  className="h-3.5 w-3.5 md:h-4 md:w-4 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -347,31 +347,36 @@ export default function ProductListPage() {
             </div>
           </div>
 
-          <div className="pt-2 pb-6 animate-fade-up" style={{ animationDelay: '0.15s' }}>
+          <div className="pt-0 pb-3 md:pb-6 animate-fade-up" style={{ animationDelay: '0.15s' }}>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsMobileFiltersOpen(true);
               }}
-              className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-3 bg-stella-charcoal/30 border border-white/[0.08] hover:border-stella-red/50 text-white hover:text-stella-red hover:bg-stella-black/80 px-8 py-3.5 rounded-2xl transition-all duration-300"
+              className="w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2.5 md:gap-3 bg-stella-charcoal/30 border border-white/[0.08] hover:border-stella-red/50 text-white hover:text-stella-red hover:bg-stella-black/80 px-5 md:px-8 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl transition-all duration-300"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 shrink-0"
+                className="h-3.5 w-3.5 md:h-4 md:w-4 shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Filters</span>
+              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">Filters</span>
               {hasActiveFilters && (
-                <div className="ml-2 w-2 h-2 rounded-full bg-stella-red animate-pulse shadow-[0_0_8px_rgba(230,57,70,0.8)]" />
+                <div className="ml-1 md:ml-2 w-2 h-2 rounded-full bg-stella-red animate-pulse shadow-[0_0_8px_rgba(230,57,70,0.8)]" />
               )}
             </button>
           </div>
+        </div>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-2 md:mt-6 relative z-10">
+        <div className="flex flex-col gap-6">
           {isMobileFiltersOpen && (
             <div
               className="fixed inset-0 z-[80] bg-stella-black/80 backdrop-blur-sm fade-overlay"
@@ -605,70 +610,69 @@ export default function ProductListPage() {
                 ))}
               </div>
             ) : (
-              <div
-                key={`grid-${categoryName}-${sortBy}-${filteredProducts.length}-${filteredProducts[0]?.id || 0}`}
-                className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-5"
-              >
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-5">
                 {filteredProducts.map((product, idx) => (
-                  <div
-                    key={product.id}
-                    className="group flex flex-col bg-[#0c0c0f] border border-white/[0.05] rounded-2xl overflow-hidden cursor-pointer hover:border-white/15 hover:shadow-[0_20px_60px_rgba(0,0,0,0.7)] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] animate-fast-fade-in"
-                    style={{ animationDelay: `${Math.min(idx * 20, 100)}ms` }}
+                  <Reveal3D
+                    key={`${categoryName}-${product.id}`}
+                    variant="up"
+                    delay={(idx % 3) * 45}
+                    duration={650}
+                    className="h-full"
                   >
-                    <article
-                      onClick={() => goToDetail(product.id)}
-                      className="flex flex-col h-full w-full"
-                    >
-                      <div className="relative bg-[#111114] overflow-hidden h-[160px] sm:h-[260px]">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_55%,rgba(230,57,70,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-600 z-0" />
+                    <div className="group flex flex-col h-full bg-[#0c0c0f] border border-white/[0.05] rounded-2xl overflow-hidden cursor-pointer hover:border-white/15 hover:shadow-[0_20px_60px_rgba(0,0,0,0.7)] transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                      <article
+                        onClick={() => goToDetail(product.id)}
+                        className="flex flex-col h-full w-full"
+                      >
+                        <div className="relative bg-[#111114] overflow-hidden h-[160px] sm:h-[260px]">
+                          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_55%,rgba(230,57,70,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-600 z-0" />
 
-                        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-center gap-2">
-
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToCart(product);
-                            }}
-                            title="Add to Cart"
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-stella-black/75 border border-white/10 flex items-center justify-center backdrop-blur-md hover:border-stella-red/50 hover:bg-stella-black transition-all text-white hover:text-stella-red"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
+                          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(product);
+                              }}
+                              title="Add to Cart"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-stella-black/75 border border-white/10 flex items-center justify-center backdrop-blur-md hover:border-stella-red/50 hover:bg-stella-black transition-all text-white hover:text-stella-red"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                              />
-                            </svg>
-                          </button>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+
+                          <img
+                            src={product.img}
+                            alt={product.name}
+                            className="absolute inset-0 m-auto object-contain z-10 transition-transform duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                            style={{ maxHeight: '220px', maxWidth: '80%' }}
+                          />
                         </div>
 
-                        <img
-                          src={product.img}
-                          alt={product.name}
-                          className="absolute inset-0 m-auto object-contain z-10 transition-transform duration-600 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-                          style={{ maxHeight: '220px', maxWidth: '80%' }}
-                        />
-                      </div>
-
-                      <div className="px-3 py-3 sm:px-5 sm:py-4 flex flex-col justify-center border-t border-white/[0.04] bg-[#0c0c0f]">
-                        <h3 className="text-[10px] sm:text-[13px] font-bold uppercase tracking-tight text-white group-hover:text-stella-red transition-colors duration-300 line-clamp-2 h-8 sm:h-10 font-display">
-                          {product.name}
-                        </h3>
-                        <p className="text-[11px] sm:text-[13px] font-black text-gray-400 mt-0.5">
-                          ₹{Number(product.price).toLocaleString('en-IN')}
-                        </p>
-                      </div>
-                    </article>
-                  </div>
+                        <div className="px-3 py-3 sm:px-5 sm:py-4 flex flex-col justify-center border-t border-white/[0.04] bg-[#0c0c0f]">
+                          <h3 className="text-[10px] sm:text-[13px] font-bold uppercase tracking-tight text-white group-hover:text-stella-red transition-colors duration-300 line-clamp-2 h-8 sm:h-10 font-display">
+                            {product.name}
+                          </h3>
+                          <p className="text-[11px] sm:text-[13px] font-black text-gray-400 mt-0.5">
+                            ₹{Number(product.price).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </article>
+                    </div>
+                  </Reveal3D>
                 ))}
 
                 {!loading && filteredProducts.length === 0 && (

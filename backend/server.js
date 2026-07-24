@@ -9,7 +9,8 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'https://stellahitech.com',
     'http://localhost:5174', // Allow local dev
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://192.168.29.63:5173' // Mobile testing on LAN
   ],
   credentials: true
 }));

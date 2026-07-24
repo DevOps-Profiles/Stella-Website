@@ -199,6 +199,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [homepageConfig, setHomepageConfig] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isSlideTransitioning, setIsSlideTransitioning] = useState(false);
   const [showFranchiseModal, setShowFranchiseModal] = useState(false);
   const [isStoreLocatorOpen, setIsStoreLocatorOpen] = useState(false);
   const [selectedNetworkHub, setSelectedNetworkHub] = useState(null);
@@ -221,20 +222,26 @@ export default function HomePage() {
     const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
     if (slidesCount > 1) {
       slideIntervalRef.current = setInterval(() => {
+        setIsSlideTransitioning(true);
         setCurrentSlide((prev) => (prev + 1) % slidesCount);
+        window.setTimeout(() => setIsSlideTransitioning(false), 750);
       }, 6000);
     }
   }, [homepageConfig]);
 
   const handlePrevSlide = () => {
     const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
+    setIsSlideTransitioning(true);
     setCurrentSlide((prev) => (prev - 1 + slidesCount) % slidesCount);
+    window.setTimeout(() => setIsSlideTransitioning(false), 750);
     resetSlideTimer();
   };
 
   const handleNextSlide = () => {
     const slidesCount = homepageConfig?.hero?.slides?.length || DEFAULT_HOMEPAGE_CONFIG.hero.slides.length;
+    setIsSlideTransitioning(true);
     setCurrentSlide((prev) => (prev + 1) % slidesCount);
+    window.setTimeout(() => setIsSlideTransitioning(false), 750);
     resetSlideTimer();
   };
 
@@ -293,9 +300,15 @@ export default function HomePage() {
         homepageConfigRef.current = data;
         setHomepageConfig(data);
 
+        if (slideIntervalRef.current) {
+          clearInterval(slideIntervalRef.current);
+          slideIntervalRef.current = null;
+        }
         if (data.hero?.slides?.length > 1) {
           slideIntervalRef.current = setInterval(() => {
+            setIsSlideTransitioning(true);
             setCurrentSlide((prev) => (prev + 1) % data.hero.slides.length);
+            window.setTimeout(() => setIsSlideTransitioning(false), 750);
           }, 6000);
         }
       } else {
@@ -440,11 +453,13 @@ export default function HomePage() {
   }, [loading, startAutoScroll, stopAutoScroll]);
 
   useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.slice(1);
+    if (!location.hash) return;
+    const id = location.hash.slice(1);
+    const timer = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [location]);
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   const franchiseTitle = homepageConfig?.franchise?.title || 'Partner with Stella';
   const franchiseTitleParts = franchiseTitle.split(' ');
@@ -467,171 +482,136 @@ export default function HomePage() {
     { value: '24h', label: 'Express Delivery' },
   ];
 
-  const mouseXY = useRef([0, 0]);
   const heroRef = useRef(null);
-  const slideLayerRef = useRef(null);
-
-  useEffect(() => {
-    const handleMove = (clientX, clientY) => {
-      const rect = heroRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      mouseXY.current = [
-        ((clientX - rect.left) / rect.width - 0.5) * 2,
-        ((clientY - rect.top) / rect.height - 0.5) * 2,
-      ];
-    };
-
-    const onMouseMove = (e) => {
-      handleMove(e.clientX, e.clientY);
-    };
-
-    const onTouchMove = (e) => {
-      if (e.touches.length > 0) {
-        handleMove(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchstart', onTouchMove, { passive: true });
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchstart', onTouchMove);
-    };
-  }, []);
-
-  useEffect(() => {
-    const layer = slideLayerRef.current;
-    if (!layer) return;
-
-    let rafId = 0;
-    const update = () => {
-      const [mx, my] = mouseXY.current;
-      layer.style.transform = `translate(${mx * -10}px, ${my * -6}px) scale(1.06)`;
-      rafId = requestAnimationFrame(update);
-    };
-    rafId = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(rafId);
-  }, [currentSlide]);
 
   const activeConfig = homepageConfig; // do not fallback to default config while fetching
   const currentSlideData = activeConfig?.hero?.slides?.[currentSlide] ?? activeConfig?.hero?.slides?.[0];
-  const titleWords = currentSlideData?.title ? currentSlideData.title.split(' ') : [];
 
   return (
-    <div className="space-y-8 md:space-y-12 pb-16">
+    <div className="space-y-8 md:space-y-12 pb-16 [overflow-anchor:none] overflow-x-hidden max-w-[100vw]">
       {/* ── Polished Bento Grid Hero ── */}
       <section
         ref={heroRef}
-        className="relative w-full pt-16 md:pt-24 pb-8 md:pb-16 px-4 md:px-8 flex items-center justify-center bg-[#050508] overflow-hidden"
+        className="relative w-full max-w-[100vw] pt-16 md:pt-24 pb-8 md:pb-16 px-4 md:px-8 flex items-center justify-center bg-[#050508] overflow-hidden isolate"
       >
-        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 grid-rows-[1fr_auto] md:grid-cols-10 md:grid-rows-1 gap-4 md:gap-6 items-stretch">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 grid-rows-[auto_auto] md:grid-cols-10 md:grid-rows-1 gap-4 md:gap-6 items-stretch min-w-0">
 
-          {/* Main Anchor: Image Mask Tile (Center, 80%) */}
-          <TiltCard
-            maxTilt={2}
-            scale={1.01}
-            className={`animate-float-up-card md:col-span-8 relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_15px_40px_rgba(0,0,0,0.25)] group flex flex-col w-full aspect-[4/3] md:aspect-[16/8] ${(currentSlideData?.categoryId || currentSlideData?.isFranchise) ? 'cursor-pointer' : ''}`}
-            onClick={() => {
-              if (currentSlideData?.isFranchise) {
-                setShowFranchiseModal(true);
-              } else if (currentSlideData?.categoryId) {
-                navigate(`/products?category=${encodeURIComponent(currentSlideData.categoryId)}`);
-              }
-            }}
-          >
-            <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0d0d12] to-[#050508]" />
-            <div className="absolute inset-0 z-0">
-              {activeConfig && (activeConfig.hero.slides || []).map((slide, idx) => (
-                <img
-                  key={idx}
-                  src={getImageUrl(slide.image)}
-                  alt={slide.title}
-                  loading="eager"
-                  fetchpriority={idx === 0 ? "high" : "auto"}
-                  className={`absolute inset-0 w-full h-full object-cover mix-blend-screen transition-all duration-1000 ease-in-out ${idx === currentSlide ? 'opacity-60 z-10' : 'opacity-0 z-0'} group-hover:scale-105 animate-hero-pan`}
-                />
-              ))}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent opacity-70 z-20 pointer-events-none" />
-            </div>
-            {/* The Text Layer */}
-            {titleWords.length > 0 && !currentSlideData?.isFranchise && (
-              <div className="absolute inset-0 z-30 flex flex-col items-start justify-end p-6 pb-24 md:p-12 md:pb-28 pointer-events-none bg-gradient-to-t from-black/40 via-transparent to-transparent">
-                <h1 className={`font-black uppercase tracking-tighter text-white leading-[0.85] text-left drop-shadow-2xl ${currentSlideData?.titleSize || 'text-[10vw] md:text-[5vw]'}`}>
-                  {titleWords.slice(0, -1).join(' ')}<br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
-                    {titleWords[titleWords.length - 1]}
-                  </span>
-                </h1>
+          {/* Clip shell (no transform) so tilt/float/titles can't widen the page */}
+          <div className="md:col-span-8 relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.5rem]">
+            <TiltCard
+              maxTilt={2}
+              scale={1}
+              className={`animate-float-up-card relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-white/[0.08] shadow-[0_15px_40px_rgba(0,0,0,0.25)] group flex flex-col w-full min-w-0 max-w-full aspect-[4/5] sm:aspect-[4/3] md:aspect-[16/8] ${isSlideTransitioning ? '[animation-play-state:paused]' : ''} ${(currentSlideData?.categoryId || currentSlideData?.isFranchise) ? 'cursor-pointer' : ''}`}
+              onClick={() => {
+                if (currentSlideData?.isFranchise) {
+                  setShowFranchiseModal(true);
+                } else if (currentSlideData?.categoryId) {
+                  navigate(`/products?category=${encodeURIComponent(currentSlideData.categoryId)}`);
+                }
+              }}
+            >
+              <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#0d0d12] to-[#050508]" />
+              {/* Images fit fully inside the card (contain) + fade/scale transition */}
+              <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
+                {(activeConfig?.hero?.slides || []).map((slide, idx) => {
+                  const active = idx === currentSlide;
+                  return (
+                    <div
+                      key={slide.id ?? idx}
+                      className={`absolute inset-0 flex items-center justify-center p-2 sm:p-3 md:p-0 transition-all duration-700 ease-in-out ${
+                        active ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-105 pointer-events-none'
+                      }`}
+                    >
+                      <img
+                        src={getImageUrl(slide.image)}
+                        alt={slide.title || 'Stella'}
+                        loading={idx === 0 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        sizes="(max-width: 768px) 100vw, 80vw"
+                        className={`block h-full w-full max-h-full max-w-full object-contain object-center ${
+                          active ? 'md:animate-hero-pan' : ''
+                        } ${active ? 'md:opacity-90 md:mix-blend-screen' : ''}`}
+                      />
+                    </div>
+                  );
+                })}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#050508]/80 via-transparent to-transparent z-20 pointer-events-none" />
               </div>
-            )}
-            {/* Floating Glass Subtitle */}
-            {currentSlideData?.subtitle && !currentSlideData?.isFranchise && (
-              <div className="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-20">
-                <span className="inline-flex items-center gap-3 bg-white/[0.05] backdrop-blur-xl px-5 py-2.5 rounded-full border border-white/10 shadow-2xl">
-                  <span className="w-2.5 h-2.5 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
-                  <span className={`text-white font-black uppercase tracking-[0.25em] ${currentSlideData?.subtitleSize || 'text-[10px] md:text-xs'}`}>
-                    {currentSlideData.subtitle}
-                  </span>
-                </span>
-              </div>
-            )}
-            {/* Left & Right Switch Buttons */}
-            {activeConfig?.hero?.slides?.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePrevSlide();
-                  }}
-                  className="absolute left-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-stella-red hover:border-stella-red hover:scale-105 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 opacity-0 group-hover:opacity-100"
-                  aria-label="Previous Slide"
-                >
-                  <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNextSlide();
-                  }}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 z-40 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-stella-red hover:border-stella-red hover:scale-105 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 opacity-0 group-hover:opacity-100"
-                  aria-label="Next Slide"
-                >
-                  <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6" />
-                </button>
-              </>
-            )}
-          </TiltCard>
 
-          {/* Action Tile (Right Column, 20%) */}
-          <TiltCard
-            maxTilt={6}
-            className="animate-float-down-card md:col-span-2 relative rounded-full md:rounded-[2.5rem] overflow-hidden bg-[#0d0d12] border border-stella-red/50 shadow-[0_0_40px_rgba(230,57,70,0.2)] group flex flex-col items-center justify-center p-4 md:p-6 cursor-pointer hover:scale-105 transition-all md:h-full w-full"
-            onClick={() => setIsStoreLocatorOpen(true)}
-          >
-            <div className="absolute inset-0 bg-gradient-to-b md:from-stella-red/5 md:to-transparent from-stella-red/10 to-stella-red/5 opacity-100 transition-opacity duration-500" />
-            <div className="relative z-10 flex flex-row md:flex-col items-center justify-between md:justify-center gap-4 md:gap-6 w-full">
-              <div className="flex items-center md:flex-col gap-4 md:gap-6">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-stella-red rounded-full animate-ping opacity-30 transition-opacity" />
-                  <div className="bg-stella-red/20 p-3 md:p-5 rounded-full backdrop-blur-md border border-stella-red/40 transition-colors">
-                    <MapPinIcon className="w-5 h-5 md:w-8 md:h-8 text-stella-red drop-shadow-lg relative z-10 transition-colors" />
+              {/* Title + subtitle stacked at bottom — fully visible, no overlap clip */}
+              <div className="absolute inset-x-0 bottom-0 z-30 pointer-events-none">
+                {(activeConfig?.hero?.slides || []).map((slide, idx) => {
+                  const active = idx === currentSlide && !slide.isFranchise;
+                  const words = slide.title ? String(slide.title).trim().split(/\s+/) : [];
+                  const hasTitle = words.length > 0;
+                  const hasSubtitle = Boolean(slide.subtitle);
+                  if (!hasTitle && !hasSubtitle) return null;
+                  return (
+                    <div
+                      key={`overlay-${slide.id ?? idx}`}
+                      className={`absolute inset-x-0 bottom-0 px-4 pt-16 pb-4 sm:px-6 sm:pb-5 md:px-10 md:pb-8 transition-opacity duration-700 ease-in-out ${
+                        active ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      }`}
+                      aria-hidden={!active}
+                    >
+                      <div className="flex flex-col items-start gap-2.5 sm:gap-3 max-w-full">
+                        {hasTitle && (
+                          <h1
+                            className={`font-black uppercase tracking-tighter text-white leading-[0.95] text-left drop-shadow-2xl max-w-full line-clamp-3 max-md:!text-2xl sm:max-md:!text-4xl ${
+                              slide.titleSize || 'text-2xl sm:text-4xl md:text-[clamp(1.75rem,4.5vw,4.5rem)]'
+                            }`}
+                          >
+                            {words.slice(0, -1).join(' ')}
+                            {words.length > 1 ? ' ' : null}
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-stella-gold to-yellow-200">
+                              {words[words.length - 1]}
+                            </span>
+                          </h1>
+                        )}
+                        {hasSubtitle && (
+                          <span className="inline-flex max-w-full items-start gap-2.5 bg-black/45 backdrop-blur-xl px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-white/10 shadow-2xl">
+                            <span className="mt-1.5 w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0 rounded-full animate-pulse bg-stella-red shadow-[0_0_10px_rgba(255,0,0,0.8)]" />
+                            <span className={`text-white font-black uppercase tracking-[0.15em] leading-snug whitespace-normal break-words ${slide.subtitleSize || 'text-[9px] sm:text-[10px] md:text-xs'}`}>
+                              {slide.subtitle}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </TiltCard>
+          </div>
+
+          {/* Action Tile (Right Column, 20%) — clip shell so hover scale can't widen page */}
+          <div className="md:col-span-2 relative min-w-0 w-full max-w-full overflow-hidden rounded-full md:rounded-[2.5rem]">
+            <TiltCard
+              maxTilt={6}
+              scale={1}
+              className="animate-float-down-card relative rounded-full md:rounded-[2.5rem] overflow-hidden bg-[#0d0d12] border border-stella-red/50 shadow-[0_0_40px_rgba(230,57,70,0.2)] group flex flex-col items-center justify-center p-4 md:p-6 cursor-pointer md:hover:scale-105 transition-all md:h-full w-full min-w-0 max-w-full"
+              onClick={() => setIsStoreLocatorOpen(true)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b md:from-stella-red/5 md:to-transparent from-stella-red/10 to-stella-red/5 opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10 flex flex-row md:flex-col items-center justify-between md:justify-center gap-4 md:gap-6 w-full">
+                <div className="flex items-center md:flex-col gap-4 md:gap-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-stella-red rounded-full animate-ping opacity-30 transition-opacity" />
+                    <div className="bg-stella-red/20 p-3 md:p-5 rounded-full backdrop-blur-md border border-stella-red/40 transition-colors">
+                      <MapPinIcon className="w-5 h-5 md:w-8 md:h-8 text-stella-red drop-shadow-lg relative z-10 transition-colors" />
+                    </div>
                   </div>
+                  <span className="text-stella-red font-black uppercase tracking-[0.15em] text-sm md:text-lg text-left md:text-center drop-shadow-sm leading-tight mt-0 md:mt-2 transition-colors">
+                    Store <span className="md:hidden">Locator</span><br className="hidden md:block" /> <span className="hidden md:inline">Locator</span>
+                  </span>
                 </div>
-                <span className="text-stella-red font-black uppercase tracking-[0.15em] text-sm md:text-lg text-left md:text-center drop-shadow-sm leading-tight mt-0 md:mt-2 transition-colors">
-                  Store <span className="md:hidden">Locator</span><br className="hidden md:block" /> <span className="hidden md:inline">Locator</span>
-                </span>
-              </div>
 
-              <div className="px-5 py-3 md:px-4 md:py-2 rounded-full bg-stella-red text-white text-[10px] font-bold uppercase tracking-widest border border-stella-red flex items-center gap-1 shadow-[0_0_15px_rgba(230,57,70,0.5)] transition-colors shrink-0">
-                Find Us <ChevronRightIcon size={12} />
+                <div className="px-5 py-3 md:px-4 md:py-2 rounded-full bg-stella-red text-white text-[10px] font-bold uppercase tracking-widest border border-stella-red flex items-center gap-1 shadow-[0_0_15px_rgba(230,57,70,0.5)] transition-colors shrink-0">
+                  Find Us <ChevronRightIcon size={12} />
+                </div>
               </div>
-            </div>
-          </TiltCard>
+            </TiltCard>
+          </div>
         </div>
       </section>
 
@@ -1084,12 +1064,13 @@ export default function HomePage() {
 
       <style>{`
         @keyframes hero-pan {
-          0% { transform: scale(1.05) translate(0, 0); }
-          50% { transform: scale(1.08) translate(-1%, 1%); }
-          100% { transform: scale(1.05) translate(0, 0); }
+          0% { transform: scale(1) translate(0, 0); }
+          50% { transform: scale(1.03) translate(-0.5%, 0.5%); }
+          100% { transform: scale(1) translate(0, 0); }
         }
         .animate-hero-pan {
-          animation: hero-pan 20s ease-in-out infinite;
+          animation: hero-pan 18s ease-in-out infinite;
+          transform-origin: center center;
         }
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
@@ -1099,12 +1080,12 @@ export default function HomePage() {
           animation: float 4s ease-in-out infinite;
         }
         @keyframes float-up-card {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -8px, 0); }
         }
         @keyframes float-down-card {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(12px); }
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, 8px, 0); }
         }
         .animate-float-up-card {
           animation: float-up-card 8s ease-in-out infinite;
